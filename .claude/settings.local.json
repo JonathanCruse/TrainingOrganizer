@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd \"C:\\\\Users\\\\jonathan.cruse\\\\source\\\\repos\\\\privat\\\\TrainingOrganizer\" && dotnet build src/TrainingOrganizer.Domain/TrainingOrganizer.Domain.csproj 2>&1)",
+      "Bash(cd \"C:\\\\Users\\\\jonathan.cruse\\\\source\\\\repos\\\\privat\\\\TrainingOrganizer\" && dotnet build 2>&1)"
+    ]
+  }
+}
