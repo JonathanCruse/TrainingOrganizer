@@ -1,8 +1,9 @@
 using TrainingOrganizer.Domain.Common.ValueObjects;
 using TrainingOrganizer.Domain.Membership.ValueObjects;
-using TrainingOrganizer.Domain.Training;
 using TrainingOrganizer.Domain.Training.Enums;
 using TrainingOrganizer.Domain.Training.ValueObjects;
+using DomainTraining = TrainingOrganizer.Domain.Training.Training;
+using DomainRecurringTraining = TrainingOrganizer.Domain.Training.RecurringTraining;
 
 namespace TrainingOrganizer.Domain.Tests.TestHelpers;
 
@@ -22,7 +23,7 @@ public static class TrainingFactory
         return new Capacity(min, max);
     }
 
-    public static Training.Training CreateDraftTraining(
+    public static DomainTraining CreateDraftTraining(
         TrainingTitle? title = null,
         TrainingDescription? description = null,
         TimeSlot? timeSlot = null,
@@ -31,7 +32,7 @@ public static class TrainingFactory
         IReadOnlyList<MemberId>? trainerIds = null,
         MemberId? createdBy = null)
     {
-        var training = Training.Training.Create(
+        var training = DomainTraining.Create(
             title ?? new TrainingTitle("Advanced C# Workshop"),
             description ?? new TrainingDescription("A deep dive into advanced C# features."),
             timeSlot ?? CreateTimeSlot(),
@@ -44,7 +45,7 @@ public static class TrainingFactory
         return training;
     }
 
-    public static Training.Training CreatePublishedTraining(
+    public static DomainTraining CreatePublishedTraining(
         TrainingTitle? title = null,
         TrainingDescription? description = null,
         TimeSlot? timeSlot = null,

@@ -3,10 +3,11 @@ using TrainingOrganizer.Domain.Common.ValueObjects;
 using TrainingOrganizer.Domain.Exceptions;
 using TrainingOrganizer.Domain.Membership.ValueObjects;
 using TrainingOrganizer.Domain.Tests.TestHelpers;
-using TrainingOrganizer.Domain.Training;
 using TrainingOrganizer.Domain.Training.Enums;
 using TrainingOrganizer.Domain.Training.Events;
 using TrainingOrganizer.Domain.Training.ValueObjects;
+using TrainingSession = TrainingOrganizer.Domain.Training.TrainingSession;
+using RecurringTrainingId = TrainingOrganizer.Domain.Training.ValueObjects.RecurringTrainingId;
 
 namespace TrainingOrganizer.Domain.Tests.Training;
 

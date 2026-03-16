@@ -1,41 +1,44 @@
+using TrainingOrganizer.Api.Endpoints;
+using TrainingOrganizer.Api.Middleware;
+using TrainingOrganizer.Application;
+using TrainingOrganizer.Infrastructure;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
+// Add services
+builder.Services.AddApplication();
+builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddOpenApi();
+
+// Add auth
+builder.Services.AddAuthentication().AddJwtBearer();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("Admin", policy => policy.RequireRole("Admin"));
+    options.AddPolicy("Trainer", policy => policy.RequireRole("Trainer", "Admin"));
+});
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// Middleware
+app.UseMiddleware<ExceptionHandlingMiddleware>();
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
 
-app.UseHttpsRedirection();
+app.UseAuthentication();
+app.UseAuthorization();
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+// Map endpoints
+app.MapMemberEndpoints();
+app.MapTrainingEndpoints();
+app.MapRecurringTrainingEndpoints();
+app.MapSessionEndpoints();
+app.MapLocationEndpoints();
+app.MapBookingEndpoints();
+app.MapScheduleEndpoints();
 
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}

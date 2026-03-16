@@ -2,10 +2,10 @@ using FluentAssertions;
 using TrainingOrganizer.Domain.Exceptions;
 using TrainingOrganizer.Domain.Membership.ValueObjects;
 using TrainingOrganizer.Domain.Tests.TestHelpers;
-using TrainingOrganizer.Domain.Training;
 using TrainingOrganizer.Domain.Training.Enums;
 using TrainingOrganizer.Domain.Training.Events;
 using TrainingOrganizer.Domain.Training.ValueObjects;
+using RecurringTraining = TrainingOrganizer.Domain.Training.RecurringTraining;
 
 namespace TrainingOrganizer.Domain.Tests.Training;
 

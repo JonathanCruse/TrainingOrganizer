@@ -9,8 +9,7 @@ public sealed record LocationDto(
     string City,
     string PostalCode,
     string Country,
-    IReadOnlyList<RoomDto> Rooms,
-    DateTimeOffset CreatedAt)
+    IReadOnlyList<RoomDto> Rooms)
 {
     public static LocationDto FromDomain(Location location) => new(
         location.Id.Value,
@@ -19,6 +18,5 @@ public sealed record LocationDto(
         location.Address.City,
         location.Address.PostalCode,
         location.Address.Country,
-        location.Rooms.Select(RoomDto.FromDomain).ToList(),
-        location.CreatedAt);
+        location.Rooms.Select(RoomDto.FromDomain).ToList());
 }

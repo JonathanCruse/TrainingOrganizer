@@ -6,6 +6,7 @@ using TrainingOrganizer.Domain.Tests.TestHelpers;
 using TrainingOrganizer.Domain.Training.Enums;
 using TrainingOrganizer.Domain.Training.Events;
 using TrainingOrganizer.Domain.Training.ValueObjects;
+using DomainTraining = TrainingOrganizer.Domain.Training.Training;
 
 namespace TrainingOrganizer.Domain.Tests.Training;
 
@@ -23,7 +24,7 @@ public class TrainingTests
         var trainerId = MemberId.Create();
         var createdBy = MemberId.Create();
 
-        var training = Domain.Training.Training.Create(
+        var training = DomainTraining.Create(
             title, description, timeSlot, capacity,
             Visibility.Public, [trainerId], createdBy);
 
@@ -42,7 +43,7 @@ public class TrainingTests
     [Fact]
     public void Create_ValidData_RaisesTrainingCreatedEvent()
     {
-        var training = Domain.Training.Training.Create(
+        var training = DomainTraining.Create(
             new TrainingTitle("Test"),
             new TrainingDescription("Desc"),
             TrainingFactory.CreateTimeSlot(),
@@ -59,7 +60,7 @@ public class TrainingTests
     [Fact]
     public void Create_NoTrainers_ThrowsDomainException()
     {
-        var act = () => Domain.Training.Training.Create(
+        var act = () => DomainTraining.Create(
             new TrainingTitle("Test"),
             new TrainingDescription("Desc"),
             TrainingFactory.CreateTimeSlot(),
