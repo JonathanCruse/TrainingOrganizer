@@ -1,0 +1,32 @@
+# Build stage
+FROM mcr.microsoft.com/dotnet/sdk:10.0-preview AS build
+WORKDIR /src
+
+# Copy solution and project files for layer caching
+COPY TrainingOrganizer.slnx ./
+COPY src/TrainingOrganizer.Shared/TrainingOrganizer.Shared.csproj src/TrainingOrganizer.Shared/
+COPY src/TrainingOrganizer.UI/TrainingOrganizer.UI.csproj src/TrainingOrganizer.UI/
+COPY src/TrainingOrganizer.Web/TrainingOrganizer.Web.csproj src/TrainingOrganizer.Web/
+
+# Restore
+RUN dotnet restore src/TrainingOrganizer.Web/TrainingOrganizer.Web.csproj
+
+# Copy all source code
+COPY . .
+
+# Publish Blazor WASM
+RUN dotnet publish src/TrainingOrganizer.Web/TrainingOrganizer.Web.csproj \
+    --configuration Release \
+    --no-restore \
+    --output /app/publish
+
+# Runtime stage — serve static files with Caddy
+FROM caddy:2-alpine AS runtime
+
+# Copy published Blazor WASM output (static files are in wwwroot/)
+COPY --from=build /app/publish/wwwroot /srv
+
+# Copy Caddyfile for SPA routing
+COPY docker/Caddyfile.web /etc/caddy/Caddyfile
+
+EXPOSE 80

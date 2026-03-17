@@ -1,0 +1,191 @@
+@page "/members"
+@attribute [Authorize(Roles = "Trainer,Admin")]
+@inject MemberApiClient MemberApi
+@inject IDialogService DialogService
+
+<PageTitle>Members</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+    <MudText Typo="Typo.h4">Members</MudText>
+    <AuthorizeView Roles="Admin">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PersonAdd"
+                   OnClick="OpenRegisterDialog">
+            Register Member
+        </MudButton>
+    </AuthorizeView>
+</MudStack>
+
+@if (_loading)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else if (_error is not null)
+{
+    <MudAlert Severity="Severity.Error">@_error</MudAlert>
+}
+else if (_members is null || _members.Count == 0)
+{
+    <MudAlert Severity="Severity.Info">No members found.</MudAlert>
+}
+else
+{
+    <MudTable Items="_members" Hover="true" Striped="true" Dense="true">
+        <HeaderContent>
+            <MudTh>Name</MudTh>
+            <MudTh>Email</MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh>Roles</MudTh>
+            <MudTh>Registered</MudTh>
+            <MudTh>Actions</MudTh>
+        </HeaderContent>
+        <RowTemplate Context="member">
+            <MudTd DataLabel="Name">@member.FirstName @member.LastName</MudTd>
+            <MudTd DataLabel="Email">@member.Email</MudTd>
+            <MudTd DataLabel="Status">
+                <MudChip T="string" Color="@GetStatusColor(member.Status)" Size="Size.Small">
+                    @member.Status
+                </MudChip>
+            </MudTd>
+            <MudTd DataLabel="Roles">
+                @foreach (var role in member.Roles)
+                {
+                    <MudChip T="string" Size="Size.Small" Class="mr-1">@role</MudChip>
+                }
+            </MudTd>
+            <MudTd DataLabel="Registered">@member.RegisteredAt.LocalDateTime.ToString("d")</MudTd>
+            <MudTd DataLabel="Actions">
+                <AuthorizeView Roles="Admin">
+                    @if (member.Status == RegistrationStatus.Pending)
+                    {
+                        <MudIconButton Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success"
+                                       Size="Size.Small" title="Approve"
+                                       OnClick="@(() => ApproveMember(member.Id))" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Cancel" Color="Color.Error"
+                                       Size="Size.Small" title="Reject"
+                                       OnClick="@(() => RejectMember(member.Id))" />
+                    }
+                    @if (member.Status == RegistrationStatus.Approved)
+                    {
+                        <MudIconButton Icon="@Icons.Material.Filled.Block" Color="Color.Warning"
+                                       Size="Size.Small" title="Suspend"
+                                       OnClick="@(() => SuspendMember(member.Id))" />
+                    }
+                    @if (member.Status == RegistrationStatus.Suspended)
+                    {
+                        <MudIconButton Icon="@Icons.Material.Filled.RestartAlt" Color="Color.Success"
+                                       Size="Size.Small" title="Reinstate"
+                                       OnClick="@(() => ReinstateMember(member.Id))" />
+                    }
+                </AuthorizeView>
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+}
+
+@code {
+    private List<MemberResponse>? _members;
+    private string? _error;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadMembers();
+    }
+
+    private async Task LoadMembers()
+    {
+        _loading = true;
+        _error = null;
+
+        try
+        {
+            var result = await MemberApi.GetAllAsync();
+            _members = result?.Items.ToList();
+        }
+        catch (AccessTokenNotAvailableException ex)
+        {
+            ex.Redirect();
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to load members: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OpenRegisterDialog()
+    {
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<RegisterMemberDialog>(string.Empty, options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled)
+        {
+            await LoadMembers();
+        }
+    }
+
+    private async Task ApproveMember(Guid id)
+    {
+        try
+        {
+            await MemberApi.ApproveAsync(id);
+            await LoadMembers();
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to approve member: {ex.Message}";
+        }
+    }
+
+    private async Task RejectMember(Guid id)
+    {
+        try
+        {
+            await MemberApi.RejectAsync(id, new RejectMemberRequest("Rejected by admin"));
+            await LoadMembers();
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to reject member: {ex.Message}";
+        }
+    }
+
+    private async Task SuspendMember(Guid id)
+    {
+        try
+        {
+            await MemberApi.SuspendAsync(id, new SuspendMemberRequest("Suspended by admin"));
+            await LoadMembers();
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to suspend member: {ex.Message}";
+        }
+    }
+
+    private async Task ReinstateMember(Guid id)
+    {
+        try
+        {
+            await MemberApi.ReinstateAsync(id);
+            await LoadMembers();
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to reinstate member: {ex.Message}";
+        }
+    }
+
+    private static Color GetStatusColor(RegistrationStatus status) => status switch
+    {
+        RegistrationStatus.Approved => Color.Success,
+        RegistrationStatus.Pending => Color.Warning,
+        RegistrationStatus.Rejected => Color.Error,
+        RegistrationStatus.Suspended => Color.Dark,
+        _ => Color.Default
+    };
+}

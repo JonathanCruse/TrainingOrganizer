@@ -1,0 +1,133 @@
+@page "/locations"
+@attribute [Authorize(Roles = "Trainer,Admin")]
+@inject FacilityApiClient FacilityApi
+@inject IDialogService DialogService
+
+<PageTitle>Locations</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+    <MudText Typo="Typo.h4">Locations</MudText>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+               OnClick="OpenCreateLocationDialog">
+        New Location
+    </MudButton>
+</MudStack>
+
+@if (_loading)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else if (_error is not null)
+{
+    <MudAlert Severity="Severity.Error">@_error</MudAlert>
+}
+else if (_locations is null || _locations.Count == 0)
+{
+    <MudAlert Severity="Severity.Info">No locations found.</MudAlert>
+}
+else
+{
+    <MudGrid>
+        @foreach (var location in _locations)
+        {
+            <MudItem xs="12" sm="6" md="4">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">@location.Name</MudText>
+                        </CardHeaderContent>
+                        <CardHeaderActions>
+                            <MudIconButton Icon="@Icons.Material.Filled.MeetingRoom" Color="Color.Primary"
+                                           OnClick="@(() => OpenAddRoomDialog(location.Id))" title="Add Room" />
+                        </CardHeaderActions>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudText Typo="Typo.body2">
+                            @location.Street, @location.PostalCode @location.City, @location.Country
+                        </MudText>
+                        <MudText Typo="Typo.subtitle2" Class="mt-3 mb-1">
+                            Rooms (@location.Rooms.Count):
+                        </MudText>
+                        <MudTable Items="location.Rooms" Dense="true" Hover="true" Elevation="0" Bordered="true">
+                            <HeaderContent>
+                                <MudTh>Name</MudTh>
+                                <MudTh>Capacity</MudTh>
+                                <MudTh>Status</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd DataLabel="Name">@context.Name</MudTd>
+                                <MudTd DataLabel="Capacity">@context.Capacity</MudTd>
+                                <MudTd DataLabel="Status">
+                                    <MudChip T="string" Size="Size.Small"
+                                             Color="@(context.Status == RoomStatus.Enabled ? Color.Success : Color.Default)">
+                                        @context.Status
+                                    </MudChip>
+                                </MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        }
+    </MudGrid>
+}
+
+@code {
+    private List<LocationResponse>? _locations;
+    private string? _error;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadLocations();
+    }
+
+    private async Task LoadLocations()
+    {
+        _loading = true;
+        _error = null;
+
+        try
+        {
+            var result = await FacilityApi.GetAllLocationsAsync();
+            _locations = result?.Items.ToList();
+        }
+        catch (AccessTokenNotAvailableException ex)
+        {
+            ex.Redirect();
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to load locations: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OpenCreateLocationDialog()
+    {
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<CreateLocationDialog>(string.Empty, options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled)
+        {
+            await LoadLocations();
+        }
+    }
+
+    private async Task OpenAddRoomDialog(Guid locationId)
+    {
+        var parameters = new DialogParameters<AddRoomDialog> { { x => x.LocationId, locationId } };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<AddRoomDialog>(string.Empty, parameters, options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled)
+        {
+            await LoadLocations();
+        }
+    }
+}

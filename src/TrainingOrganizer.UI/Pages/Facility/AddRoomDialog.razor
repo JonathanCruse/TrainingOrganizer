@@ -1,0 +1,80 @@
+@inject FacilityApiClient FacilityApi
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Add Room</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="_isValid">
+            <MudTextField @bind-Value="_name" Label="Room Name" Required="true"
+                          RequiredError="Name is required" Class="mb-3" />
+            <MudNumericField @bind-Value="_capacity" Label="Capacity" Min="1" Required="true"
+                             RequiredError="Capacity is required" Class="mb-3" />
+        </MudForm>
+        @if (_error is not null)
+        {
+            <MudAlert Severity="Severity.Error" Class="mt-3">@_error</MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit"
+                   Disabled="@(!_isValid || _submitting)">
+            @if (_submitting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            Add
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter]
+    public Guid LocationId { get; set; }
+
+    private MudForm _form = default!;
+    private bool _isValid;
+    private bool _submitting;
+    private string? _error;
+
+    private string _name = string.Empty;
+    private int _capacity = 10;
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task Submit()
+    {
+        await _form.ValidateAsync();
+        if (!_isValid) return;
+
+        _submitting = true;
+        _error = null;
+
+        try
+        {
+            var request = new AddRoomRequest(_name, _capacity);
+            var response = await FacilityApi.AddRoomAsync(LocationId, request);
+            if (response.IsSuccessStatusCode)
+            {
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            else
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                _error = $"Failed to add room: {body}";
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to add room: {ex.Message}";
+        }
+        finally
+        {
+            _submitting = false;
+        }
+    }
+}

@@ -1,0 +1,22 @@
+<CascadingAuthenticationState>
+    <Router AppAssembly="typeof(App).Assembly"
+            AdditionalAssemblies="new[] { typeof(TrainingOrganizer.UI.Layout.MainLayout).Assembly }">
+        <Found Context="routeData">
+            <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(TrainingOrganizer.UI.Layout.MainLayout)">
+                <NotAuthorized>
+                    <MudText Typo="Typo.h5">You are not authorized to view this page.</MudText>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="authentication/login">
+                        Login
+                    </MudButton>
+                </NotAuthorized>
+            </AuthorizeRouteView>
+            <FocusOnNavigate RouteData="routeData" Selector="h1" />
+        </Found>
+        <NotFound>
+            <PageTitle>Not found</PageTitle>
+            <LayoutView Layout="typeof(TrainingOrganizer.UI.Layout.MainLayout)">
+                <MudText Typo="Typo.h5">Page not found.</MudText>
+            </LayoutView>
+        </NotFound>
+    </Router>
+</CascadingAuthenticationState>

@@ -1,0 +1,88 @@
+@inject MemberApiClient MemberApi
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Register Member</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="_isValid">
+            <MudTextField @bind-Value="_firstName" Label="First Name" Required="true"
+                          RequiredError="First name is required" Class="mb-3" />
+            <MudTextField @bind-Value="_lastName" Label="Last Name" Required="true"
+                          RequiredError="Last name is required" Class="mb-3" />
+            <MudTextField @bind-Value="_email" Label="Email" Required="true" InputType="InputType.Email"
+                          RequiredError="Email is required" Class="mb-3" />
+            <MudTextField @bind-Value="_provider" Label="Identity Provider" Required="true"
+                          RequiredError="Provider is required" Class="mb-3"
+                          HelperText="e.g. keycloak" />
+            <MudTextField @bind-Value="_subjectId" Label="Subject ID" Required="true"
+                          RequiredError="Subject ID is required" Class="mb-3"
+                          HelperText="External identity provider user ID" />
+        </MudForm>
+        @if (_error is not null)
+        {
+            <MudAlert Severity="Severity.Error" Class="mt-3">@_error</MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit"
+                   Disabled="@(!_isValid || _submitting)">
+            @if (_submitting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            Register
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private MudForm _form = default!;
+    private bool _isValid;
+    private bool _submitting;
+    private string? _error;
+
+    private string _firstName = string.Empty;
+    private string _lastName = string.Empty;
+    private string _email = string.Empty;
+    private string _provider = "keycloak";
+    private string _subjectId = string.Empty;
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task Submit()
+    {
+        await _form.ValidateAsync();
+        if (!_isValid) return;
+
+        _submitting = true;
+        _error = null;
+
+        try
+        {
+            var request = new RegisterMemberRequest(_provider, _subjectId, _firstName, _lastName, _email);
+            var response = await MemberApi.RegisterAsync(request);
+            if (response.IsSuccessStatusCode)
+            {
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            else
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                _error = $"Failed to register member: {body}";
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to register member: {ex.Message}";
+        }
+        finally
+        {
+            _submitting = false;
+        }
+    }
+}

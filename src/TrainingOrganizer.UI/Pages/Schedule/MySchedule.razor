@@ -1,0 +1,71 @@
+@page "/schedule"
+@attribute [Authorize]
+@inject ScheduleApiClient ScheduleApi
+
+<PageTitle>My Schedule</PageTitle>
+
+<MudText Typo="Typo.h4" GutterBottom="true">My Schedule</MudText>
+
+@if (_loading)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else if (_error is not null)
+{
+    <MudAlert Severity="Severity.Error">@_error</MudAlert>
+}
+else if (_entries is null || _entries.Count == 0)
+{
+    <MudAlert Severity="Severity.Info">No upcoming schedule entries.</MudAlert>
+}
+else
+{
+    <MudTable Items="_entries" Hover="true" Striped="true" Dense="true">
+        <HeaderContent>
+            <MudTh>Title</MudTh>
+            <MudTh>Type</MudTh>
+            <MudTh>Start</MudTh>
+            <MudTh>End</MudTh>
+            <MudTh>Location</MudTh>
+            <MudTh>Room</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Title">@context.Title</MudTd>
+            <MudTd DataLabel="Type">
+                <MudChip T="string" Size="Size.Small">@context.Type</MudChip>
+            </MudTd>
+            <MudTd DataLabel="Start">@context.Start.LocalDateTime.ToString("g")</MudTd>
+            <MudTd DataLabel="End">@context.End.LocalDateTime.ToString("g")</MudTd>
+            <MudTd DataLabel="Location">@(context.LocationName ?? "—")</MudTd>
+            <MudTd DataLabel="Room">@(context.RoomName ?? "—")</MudTd>
+        </RowTemplate>
+    </MudTable>
+}
+
+@code {
+    private List<ScheduleEntryResponse>? _entries;
+    private string? _error;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var from = DateTimeOffset.UtcNow;
+            var to = from.AddDays(30);
+            _entries = await ScheduleApi.GetMyScheduleAsync(from, to);
+        }
+        catch (AccessTokenNotAvailableException ex)
+        {
+            ex.Redirect();
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to load schedule: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}

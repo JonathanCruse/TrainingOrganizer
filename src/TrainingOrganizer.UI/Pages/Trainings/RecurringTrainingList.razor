@@ -1,0 +1,178 @@
+@page "/recurring-trainings"
+@attribute [Authorize(Roles = "Trainer,Admin")]
+@inject RecurringTrainingApiClient RecurringTrainingApi
+@inject IDialogService DialogService
+
+<PageTitle>Recurring Trainings</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+    <MudText Typo="Typo.h4">Recurring Trainings</MudText>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+               OnClick="OpenCreateDialog">
+        New Recurring Training
+    </MudButton>
+</MudStack>
+
+@if (_loading)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else if (_error is not null)
+{
+    <MudAlert Severity="Severity.Error">@_error</MudAlert>
+}
+else if (_items is null || _items.Count == 0)
+{
+    <MudAlert Severity="Severity.Info">No recurring trainings found.</MudAlert>
+}
+else
+{
+    <MudGrid>
+        @foreach (var item in _items)
+        {
+            <MudItem xs="12" sm="6" md="4">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">@item.Title</MudText>
+                        </CardHeaderContent>
+                        <CardHeaderActions>
+                            <MudChip T="string" Color="@GetStatusColor(item.Status)" Size="Size.Small">
+                                @item.Status
+                            </MudChip>
+                        </CardHeaderActions>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudText Typo="Typo.body2" Class="mb-2">@item.Description</MudText>
+                        <MudText Typo="Typo.caption">
+                            @item.Pattern @item.DayOfWeek at @item.TimeOfDay (@item.Duration)
+                        </MudText>
+                        <MudText Typo="Typo.caption">
+                            Capacity: @item.MinCapacity – @item.MaxCapacity
+                        </MudText>
+                        <MudText Typo="Typo.caption">
+                            From @item.StartDate @if (item.EndDate is not null) { <text> to @item.EndDate</text> }
+                        </MudText>
+                        @if (item.LastGeneratedUntil is not null)
+                        {
+                            <MudText Typo="Typo.caption">Sessions generated until: @item.LastGeneratedUntil</MudText>
+                        }
+                    </MudCardContent>
+                    <MudCardActions>
+                        @if (item.Status == RecurringTrainingStatus.Active)
+                        {
+                            <MudButton Size="Size.Small" Color="Color.Primary" OnClick="() => OpenGenerateDialog(item)">
+                                Generate Sessions
+                            </MudButton>
+                            <MudButton Size="Size.Small" Color="Color.Warning" OnClick="() => Pause(item.Id)">
+                                Pause
+                            </MudButton>
+                            <MudButton Size="Size.Small" Color="Color.Error" OnClick="() => End(item.Id)">
+                                End
+                            </MudButton>
+                        }
+                        else if (item.Status == RecurringTrainingStatus.Paused)
+                        {
+                            <MudButton Size="Size.Small" Color="Color.Success" OnClick="() => Resume(item.Id)">
+                                Resume
+                            </MudButton>
+                            <MudButton Size="Size.Small" Color="Color.Error" OnClick="() => End(item.Id)">
+                                End
+                            </MudButton>
+                        }
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+        }
+    </MudGrid>
+}
+
+@code {
+    private List<RecurringTrainingResponse>? _items;
+    private string? _error;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Load();
+    }
+
+    private async Task Load()
+    {
+        _loading = true;
+        _error = null;
+
+        try
+        {
+            var result = await RecurringTrainingApi.GetAllAsync();
+            _items = result?.Items.ToList();
+        }
+        catch (AccessTokenNotAvailableException ex)
+        {
+            ex.Redirect();
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to load recurring trainings: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<CreateRecurringTrainingDialog>(string.Empty, options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled)
+        {
+            await Load();
+        }
+    }
+
+    private async Task OpenGenerateDialog(RecurringTrainingResponse item)
+    {
+        var parameters = new DialogParameters<GenerateSessionsDialog>
+        {
+            { x => x.RecurringTrainingId, item.Id },
+            { x => x.Title, item.Title }
+        };
+        var options = new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<GenerateSessionsDialog>(string.Empty, parameters, options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled)
+        {
+            await Load();
+        }
+    }
+
+    private async Task Pause(Guid id)
+    {
+        try { await RecurringTrainingApi.PauseAsync(id); await Load(); }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private async Task Resume(Guid id)
+    {
+        try { await RecurringTrainingApi.ResumeAsync(id); await Load(); }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private async Task End(Guid id)
+    {
+        try { await RecurringTrainingApi.EndAsync(id); await Load(); }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private static Color GetStatusColor(RecurringTrainingStatus status) => status switch
+    {
+        RecurringTrainingStatus.Active => Color.Success,
+        RecurringTrainingStatus.Paused => Color.Warning,
+        RecurringTrainingStatus.Ended => Color.Default,
+        _ => Color.Default
+    };
+}

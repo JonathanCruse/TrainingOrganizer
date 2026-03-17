@@ -1,0 +1,86 @@
+@inject FacilityApiClient FacilityApi
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Create Location</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="_isValid">
+            <MudTextField @bind-Value="_name" Label="Name" Required="true"
+                          RequiredError="Name is required" Class="mb-3" />
+            <MudTextField @bind-Value="_street" Label="Street" Required="true"
+                          RequiredError="Street is required" Class="mb-3" />
+            <MudTextField @bind-Value="_city" Label="City" Required="true"
+                          RequiredError="City is required" Class="mb-3" />
+            <MudTextField @bind-Value="_postalCode" Label="Postal Code" Required="true"
+                          RequiredError="Postal code is required" Class="mb-3" />
+            <MudTextField @bind-Value="_country" Label="Country" Required="true"
+                          RequiredError="Country is required" Class="mb-3" />
+        </MudForm>
+        @if (_error is not null)
+        {
+            <MudAlert Severity="Severity.Error" Class="mt-3">@_error</MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit"
+                   Disabled="@(!_isValid || _submitting)">
+            @if (_submitting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            Create
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private MudForm _form = default!;
+    private bool _isValid;
+    private bool _submitting;
+    private string? _error;
+
+    private string _name = string.Empty;
+    private string _street = string.Empty;
+    private string _city = string.Empty;
+    private string _postalCode = string.Empty;
+    private string _country = string.Empty;
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task Submit()
+    {
+        await _form.ValidateAsync();
+        if (!_isValid) return;
+
+        _submitting = true;
+        _error = null;
+
+        try
+        {
+            var request = new CreateLocationRequest(_name, _street, _city, _postalCode, _country);
+            var response = await FacilityApi.CreateLocationAsync(request);
+            if (response.IsSuccessStatusCode)
+            {
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            else
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                _error = $"Failed to create location: {body}";
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to create location: {ex.Message}";
+        }
+        finally
+        {
+            _submitting = false;
+        }
+    }
+}

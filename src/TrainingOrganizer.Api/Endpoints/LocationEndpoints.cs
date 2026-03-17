@@ -32,9 +32,9 @@ public static class LocationEndpoints
         return result.ToCreatedResult($"/api/v1/locations/{result.Value}");
     }
 
-    private static async Task<IResult> ListLocations(ISender sender)
+    private static async Task<IResult> ListLocations(int page, int pageSize, ISender sender)
     {
-        var query = new ListLocationsQuery();
+        var query = new ListLocationsQuery(page, pageSize);
         var result = await sender.Send(query);
         return result.ToApiResult();
     }

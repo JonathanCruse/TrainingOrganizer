@@ -1,0 +1,146 @@
+@inject TrainingApiClient TrainingApi
+@inject MemberApiClient MemberApi
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Create Training</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="_isValid">
+            <MudTextField @bind-Value="_title" Label="Title" Required="true"
+                          RequiredError="Title is required" Class="mb-3" />
+            <MudTextField @bind-Value="_description" Label="Description" Lines="3" Class="mb-3" />
+            <MudDatePicker @bind-Date="_startDate" Label="Start Date" Required="true"
+                           RequiredError="Start date is required" Class="mb-3" />
+            <MudTimePicker @bind-Time="_startTime" Label="Start Time" Required="true"
+                           RequiredError="Start time is required" Class="mb-3" />
+            <MudDatePicker @bind-Date="_endDate" Label="End Date" Required="true"
+                           RequiredError="End date is required" Class="mb-3" />
+            <MudTimePicker @bind-Time="_endTime" Label="End Time" Required="true"
+                           RequiredError="End time is required" Class="mb-3" />
+            <MudNumericField @bind-Value="_minCapacity" Label="Min Capacity" Min="1" Required="true"
+                             RequiredError="Min capacity is required" Class="mb-3" />
+            <MudNumericField @bind-Value="_maxCapacity" Label="Max Capacity" Min="1" Required="true"
+                             RequiredError="Max capacity is required" Class="mb-3" />
+            <MudSelect @bind-Value="_visibility" Label="Visibility" Required="true" Class="mb-3">
+                @foreach (var v in Enum.GetValues<Visibility>())
+                {
+                    <MudSelectItem Value="v">@v</MudSelectItem>
+                }
+            </MudSelect>
+            <MudSelect T="Guid" Label="Trainers" MultiSelection="true" @bind-SelectedValues="_selectedTrainerIds"
+                       Required="true" RequiredError="At least one trainer is required" Class="mb-3"
+                       ToStringFunc="@(id => _trainerLookup.GetValueOrDefault(id, id.ToString()))">
+                @foreach (var trainer in _trainers)
+                {
+                    <MudSelectItem T="Guid" Value="trainer.Id">@trainer.FirstName @trainer.LastName</MudSelectItem>
+                }
+            </MudSelect>
+        </MudForm>
+        @if (_error is not null)
+        {
+            <MudAlert Severity="Severity.Error" Class="mt-3">@_error</MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit"
+                   Disabled="@(!_isValid || _submitting)">
+            @if (_submitting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            Create
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private MudForm _form = default!;
+    private bool _isValid;
+    private bool _submitting;
+    private string? _error;
+
+    private string _title = string.Empty;
+    private string? _description;
+    private DateTime? _startDate = DateTime.Today;
+    private TimeSpan? _startTime = new(9, 0, 0);
+    private DateTime? _endDate = DateTime.Today;
+    private TimeSpan? _endTime = new(10, 0, 0);
+    private int _minCapacity = 1;
+    private int _maxCapacity = 20;
+    private Visibility _visibility = Visibility.Public;
+
+    private List<MemberResponse> _trainers = [];
+    private IReadOnlyCollection<Guid> _selectedTrainerIds = [];
+    private Dictionary<Guid, string> _trainerLookup = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var result = await MemberApi.GetAllAsync(1, 100);
+            if (result?.Items is not null)
+            {
+                _trainers = result.Items
+                    .Where(m => m.Roles.Contains(MemberRole.Trainer) || m.Roles.Contains(MemberRole.Admin))
+                    .Where(m => m.Status == RegistrationStatus.Approved)
+                    .ToList();
+                _trainerLookup = _trainers.ToDictionary(t => t.Id, t => $"{t.FirstName} {t.LastName}");
+            }
+        }
+        catch
+        {
+            // Trainer list load failure is non-fatal, user will see empty dropdown
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task Submit()
+    {
+        await _form.ValidateAsync();
+        if (!_isValid) return;
+
+        _submitting = true;
+        _error = null;
+
+        try
+        {
+            var start = new DateTimeOffset(_startDate!.Value.Add(_startTime!.Value), TimeZoneInfo.Local.GetUtcOffset(DateTime.Now));
+            var end = new DateTimeOffset(_endDate!.Value.Add(_endTime!.Value), TimeZoneInfo.Local.GetUtcOffset(DateTime.Now));
+
+            var request = new CreateTrainingRequest(
+                _title,
+                _description,
+                start,
+                end,
+                _minCapacity,
+                _maxCapacity,
+                _visibility.ToString(),
+                _selectedTrainerIds.ToList());
+
+            var response = await TrainingApi.CreateAsync(request);
+            if (response.IsSuccessStatusCode)
+            {
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            else
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                _error = $"Failed to create training: {body}";
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to create training: {ex.Message}";
+        }
+        finally
+        {
+            _submitting = false;
+        }
+    }
+}

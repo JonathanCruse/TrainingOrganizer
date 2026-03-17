@@ -8,7 +8,8 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - MongoDB__ConnectionString=mongodb://mongodb:27017/training-organizer
-      - Keycloak__Authority=http://keycloak:8080/realms/training-organizer
+      - Authentication__Schemes__Bearer__Authority=http://keycloak:8080/realms/training-organizer
+      - Authentication__Schemes__Bearer__RequireHttpsMetadata=false
     depends_on:
       - mongodb
       - keycloak

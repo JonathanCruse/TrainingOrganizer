@@ -18,12 +18,16 @@ jobs:
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
         dotnet-quality: 'preview'
-    - name: Restore
-      run: dotnet restore
-    - name: Build
-      run: dotnet build --no-restore --configuration Release
+    - name: Restore (exclude Mobile — requires MAUI workload)
+      run: |
+        dotnet restore src/TrainingOrganizer.Api/
+        dotnet restore src/TrainingOrganizer.Web/
+    - name: Build API
+      run: dotnet build src/TrainingOrganizer.Api/ --no-restore --configuration Release
+    - name: Build Web
+      run: dotnet build src/TrainingOrganizer.Web/ --no-restore --configuration Release
     - name: Format check
-      run: dotnet format --verify-no-changes --no-restore
+      run: dotnet format --verify-no-changes --no-restore --exclude src/TrainingOrganizer.Mobile/
 
   test:
     needs: build
@@ -35,7 +39,7 @@ jobs:
         dotnet-version: ${{ env.DOTNET_VERSION }}
         dotnet-quality: 'preview'
     - name: Run tests
-      run: dotnet test --configuration Release --collect:"XPlat Code Coverage" --results-directory ./coverage
+      run: dotnet test --configuration Release --collect:"XPlat Code Coverage" --results-directory ./coverage -- RunConfiguration.TestSessionTimeout=120000
     - name: Upload coverage
       uses: actions/upload-artifact@v4
       with:
@@ -56,11 +60,21 @@ jobs:
         registry: ghcr.io
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
-    - uses: docker/build-push-action@v5
+    - name: Build and push API image
+      uses: docker/build-push-action@v5
       with:
         context: .
         file: docker/Dockerfile
         push: true
         tags: |
-          ghcr.io/${{ github.repository }}:${{ github.sha }}
-          ghcr.io/${{ github.repository }}:latest
+          ghcr.io/${{ github.repository }}/api:${{ github.sha }}
+          ghcr.io/${{ github.repository }}/api:latest
+    - name: Build and push Web image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: docker/Dockerfile.web
+        push: true
+        tags: |
+          ghcr.io/${{ github.repository }}/web:${{ github.sha }}
+          ghcr.io/${{ github.repository }}/web:latest

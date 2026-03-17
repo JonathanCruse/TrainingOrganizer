@@ -8,12 +8,14 @@ services:
 
   keycloak:
     image: quay.io/keycloak/keycloak:24.0
-    command: start-dev
+    command: start-dev --import-realm
     ports:
       - "8180:8080"
     environment:
       - KEYCLOAK_ADMIN=admin
       - KEYCLOAK_ADMIN_PASSWORD=admin
+    volumes:
+      - ./keycloak/training-organizer-realm.json:/opt/keycloak/data/import/training-organizer-realm.json:ro
 
 volumes:
   mongodb_data:

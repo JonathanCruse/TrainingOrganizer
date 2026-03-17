@@ -5,7 +5,15 @@
       "Bash(cd \"C:\\\\Users\\\\jonathan.cruse\\\\source\\\\repos\\\\privat\\\\TrainingOrganizer\" && dotnet build 2>&1)",
       "Bash(dotnet add:*)",
       "Bash(dotnet build:*)",
-      "Bash(dotnet test:*)"
+      "Bash(dotnet test:*)",
+      "Bash(dotnet workload:*)",
+      "Bash(grep:*)",
+      "Bash(find:*)",
+      "Bash(docker ps:*)",
+      "Bash(netstat:*)",
+      "Bash(curl:*)",
+      "Bash(dotnet clean:*)",
+      "Bash(cd:*)"
     ]
   }
 }

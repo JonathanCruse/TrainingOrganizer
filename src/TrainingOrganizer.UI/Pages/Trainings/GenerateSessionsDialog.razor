@@ -1,0 +1,81 @@
+@inject RecurringTrainingApiClient RecurringTrainingApi
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Generate Sessions for @Title</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="_isValid">
+            <MudDatePicker @bind-Date="_untilDate" Label="Generate sessions until" Required="true"
+                           RequiredError="Date is required" MinDate="DateTime.Today" Class="mb-3" />
+        </MudForm>
+        @if (_error is not null)
+        {
+            <MudAlert Severity="Severity.Error" Class="mt-3">@_error</MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit"
+                   Disabled="@(!_isValid || _submitting)">
+            @if (_submitting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            Generate
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter]
+    public Guid RecurringTrainingId { get; set; }
+
+    [Parameter]
+    public string Title { get; set; } = string.Empty;
+
+    private MudForm _form = default!;
+    private bool _isValid;
+    private bool _submitting;
+    private string? _error;
+    private DateTime? _untilDate = DateTime.Today.AddMonths(3);
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task Submit()
+    {
+        await _form.ValidateAsync();
+        if (!_isValid) return;
+
+        _submitting = true;
+        _error = null;
+
+        try
+        {
+            var until = new DateTimeOffset(_untilDate!.Value, TimeZoneInfo.Local.GetUtcOffset(DateTime.Now));
+            var request = new GenerateSessionsRequest(until);
+            var response = await RecurringTrainingApi.GenerateSessionsAsync(RecurringTrainingId, request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            else
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                _error = $"Failed to generate sessions: {body}";
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to generate sessions: {ex.Message}";
+        }
+        finally
+        {
+            _submitting = false;
+        }
+    }
+}

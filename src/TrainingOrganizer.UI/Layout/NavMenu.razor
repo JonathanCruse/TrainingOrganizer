@@ -1,0 +1,22 @@
+<MudNavMenu>
+    <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">
+        Home
+    </MudNavLink>
+    <MudNavLink Href="/schedule" Icon="@Icons.Material.Filled.CalendarMonth">
+        My Schedule
+    </MudNavLink>
+    <MudNavLink Href="/trainings" Icon="@Icons.Material.Filled.FitnessCenter">
+        Trainings
+    </MudNavLink>
+    <AuthorizeView Roles="Trainer,Admin">
+        <MudNavLink Href="/recurring-trainings" Icon="@Icons.Material.Filled.Repeat">
+            Recurring Trainings
+        </MudNavLink>
+        <MudNavLink Href="/members" Icon="@Icons.Material.Filled.People">
+            Members
+        </MudNavLink>
+        <MudNavLink Href="/locations" Icon="@Icons.Material.Filled.LocationOn">
+            Locations
+        </MudNavLink>
+    </AuthorizeView>
+</MudNavMenu>

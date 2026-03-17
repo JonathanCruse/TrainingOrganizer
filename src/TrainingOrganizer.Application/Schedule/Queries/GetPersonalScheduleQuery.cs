@@ -1,6 +1,5 @@
 using FluentValidation;
 using MediatR;
-using TrainingOrganizer.Application.Common.Exceptions;
 using TrainingOrganizer.Application.Common.Interfaces;
 using TrainingOrganizer.Application.Common.Models;
 using TrainingOrganizer.Application.Schedule.DTOs;
@@ -30,8 +29,9 @@ public sealed class GetPersonalScheduleQueryHandler : IRequestHandler<GetPersona
 
     public async Task<Result<IReadOnlyList<ScheduleEntryDto>>> Handle(GetPersonalScheduleQuery request, CancellationToken cancellationToken)
     {
-        var currentUserId = _currentUserService.MemberId
-            ?? throw new ForbiddenException("You must be authenticated to view your schedule.");
+        var currentUserId = _currentUserService.MemberId;
+        if (currentUserId is null)
+            return Result.Success<IReadOnlyList<ScheduleEntryDto>>([]);
 
         var trainings = await _trainingRepository.GetByMemberParticipationAsync(currentUserId, cancellationToken);
         var trainerTrainings = await _trainingRepository.GetByTrainerAsync(currentUserId, request.From, request.To, cancellationToken);

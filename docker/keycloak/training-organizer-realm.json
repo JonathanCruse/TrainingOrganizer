@@ -1,0 +1,119 @@
+{
+  "realm": "training-organizer",
+  "enabled": true,
+  "displayName": "TrainingOrganizer",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "roles": {
+    "realm": [
+      { "name": "Admin", "description": "Full administrative access" },
+      { "name": "Trainer", "description": "Can manage trainings and view members" },
+      { "name": "Member", "description": "Standard member" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "training-organizer-web",
+      "name": "TrainingOrganizer Web & Mobile",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "http://localhost:5200/*",
+        "https://localhost:7200/*",
+        "http://localhost:5100/*"
+      ],
+      "webOrigins": [
+        "http://localhost:5200",
+        "https://localhost:7200",
+        "http://localhost:5100"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:5200/*##https://localhost:7200/*"
+      },
+      "protocolMappers": [
+        {
+          "name": "realm-roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "realm_roles",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "roles",
+            "jsonType.label": "String"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "admin",
+      "email": "admin@example.com",
+      "firstName": "Admin",
+      "lastName": "User",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [ "Admin", "Trainer", "Member" ]
+    },
+    {
+      "username": "trainer",
+      "email": "trainer@example.com",
+      "firstName": "Test",
+      "lastName": "Trainer",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "trainer",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [ "Trainer", "Member" ]
+    },
+    {
+      "username": "member",
+      "email": "member@example.com",
+      "firstName": "Test",
+      "lastName": "Member",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "member",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [ "Member" ]
+    }
+  ]
+}

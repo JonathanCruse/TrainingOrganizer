@@ -1,0 +1,21 @@
+@page "/"
+
+<PageTitle>TrainingOrganizer</PageTitle>
+
+<MudText Typo="Typo.h3" GutterBottom="true">Welcome to TrainingOrganizer</MudText>
+<MudText Typo="Typo.body1" Class="mb-4">
+    Manage trainings, schedules, and facility bookings.
+</MudText>
+
+<AuthorizeView>
+    <Authorized>
+        <MudAlert Severity="Severity.Info" Class="mb-4">
+            You are logged in as @context.User.Identity?.Name.
+        </MudAlert>
+    </Authorized>
+    <NotAuthorized>
+        <MudAlert Severity="Severity.Warning" Class="mb-4">
+            Please log in to access all features.
+        </MudAlert>
+    </NotAuthorized>
+</AuthorizeView>

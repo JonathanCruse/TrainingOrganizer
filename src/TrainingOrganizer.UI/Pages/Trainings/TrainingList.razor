@@ -1,0 +1,119 @@
+@page "/trainings"
+@inject TrainingApiClient TrainingApi
+@inject IDialogService DialogService
+
+<PageTitle>Trainings</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+    <MudText Typo="Typo.h4">Trainings</MudText>
+    <AuthorizeView Roles="Trainer,Admin">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="OpenCreateDialog">
+            New Training
+        </MudButton>
+    </AuthorizeView>
+</MudStack>
+
+@if (_loading)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else if (_error is not null)
+{
+    <MudAlert Severity="Severity.Error">@_error</MudAlert>
+}
+else if (_trainings is null || _trainings.Count == 0)
+{
+    <MudAlert Severity="Severity.Info">No trainings found.</MudAlert>
+}
+else
+{
+    <MudGrid>
+        @foreach (var training in _trainings)
+        {
+            <MudItem xs="12" sm="6" md="4">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">@training.Title</MudText>
+                        </CardHeaderContent>
+                        <CardHeaderActions>
+                            <MudChip T="string" Color="@GetStatusColor(training.Status)" Size="Size.Small">
+                                @training.Status
+                            </MudChip>
+                        </CardHeaderActions>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudText Typo="Typo.body2" Class="mb-2">@training.Description</MudText>
+                        <MudText Typo="Typo.caption">
+                            @training.Start.LocalDateTime.ToString("g") — @training.End.LocalDateTime.ToString("g")
+                        </MudText>
+                        <MudText Typo="Typo.caption">
+                            Participants: @training.ConfirmedParticipantCount / @training.MaxCapacity
+                            @if (training.WaitlistCount > 0)
+                            {
+                                <text> (Waitlist: @training.WaitlistCount)</text>
+                            }
+                        </MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        }
+    </MudGrid>
+}
+
+@code {
+    private List<TrainingResponse>? _trainings;
+    private string? _error;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTrainings();
+    }
+
+    private async Task LoadTrainings()
+    {
+        _loading = true;
+        _error = null;
+
+        try
+        {
+            var result = await TrainingApi.GetAllAsync();
+            _trainings = result?.Items.ToList();
+        }
+        catch (AccessTokenNotAvailableException ex)
+        {
+            ex.Redirect();
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to load trainings: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<CreateTrainingDialog>(string.Empty, options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled)
+        {
+            await LoadTrainings();
+        }
+    }
+
+    private static Color GetStatusColor(TrainingStatus status) => status switch
+    {
+        TrainingStatus.Published => Color.Success,
+        TrainingStatus.Draft => Color.Default,
+        TrainingStatus.Canceled => Color.Error,
+        TrainingStatus.Completed => Color.Info,
+        _ => Color.Default
+    };
+}
