@@ -133,6 +133,46 @@ public sealed class Training : AggregateRoot<TrainingId>
             DateTimeOffset.UtcNow));
     }
 
+    public void RequestGuestParticipation(MemberId memberId)
+    {
+        Guard.AgainstNull(memberId, nameof(memberId));
+
+        if (Status != TrainingStatus.Published)
+            throw new InvalidEntityStateException(nameof(Training), Status.ToString(), "request guest participation");
+
+        _participantManager.AddGuestParticipant(memberId);
+
+        AddDomainEvent(new GuestParticipationRequestedEvent(Id.Value, memberId, DateTimeOffset.UtcNow));
+    }
+
+    public void AcceptParticipant(MemberId memberId)
+    {
+        Guard.AgainstNull(memberId, nameof(memberId));
+
+        if (Status != TrainingStatus.Published)
+            throw new InvalidEntityStateException(nameof(Training), Status.ToString(), "accept participant");
+
+        var (participant, wasWaitlisted) = _participantManager.AcceptParticipant(memberId, Capacity);
+
+        AddDomainEvent(new GuestParticipantAcceptedEvent(
+            Id.Value,
+            memberId,
+            wasWaitlisted ? ParticipationStatus.Waitlisted : ParticipationStatus.Confirmed,
+            DateTimeOffset.UtcNow));
+    }
+
+    public void RejectParticipant(MemberId memberId)
+    {
+        Guard.AgainstNull(memberId, nameof(memberId));
+
+        if (Status != TrainingStatus.Published)
+            throw new InvalidEntityStateException(nameof(Training), Status.ToString(), "reject participant");
+
+        _participantManager.RejectParticipant(memberId);
+
+        AddDomainEvent(new GuestParticipantRejectedEvent(Id.Value, memberId, DateTimeOffset.UtcNow));
+    }
+
     public void RemoveParticipant(MemberId memberId)
     {
         Guard.AgainstNull(memberId, nameof(memberId));
@@ -217,4 +257,5 @@ public sealed class Training : AggregateRoot<TrainingId>
 
     public int ConfirmedParticipantCount => _participantManager.ConfirmedCount;
     public int WaitlistCount => _participantManager.WaitlistCount;
+    public int PendingApprovalCount => _participantManager.PendingApprovalCount;
 }

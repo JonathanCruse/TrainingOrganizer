@@ -16,21 +16,22 @@ public static class MemberEndpoints
         group.MapPost("/register", RegisterMember);
         group.MapGet("/me", GetCurrentMember).RequireAuthorization();
         group.MapPut("/me", UpdateProfile).RequireAuthorization();
-        group.MapGet("/", ListMembers).RequireAuthorization("Admin");
-        group.MapGet("/{id:guid}", GetMember).RequireAuthorization("Admin");
+        group.MapGet("/trainers", ListTrainers).RequireAuthorization();
+        group.MapGet("/", ListMembers).RequireAuthorization("Trainer");
+        group.MapGet("/{id:guid}", GetMember).RequireAuthorization("Trainer");
         group.MapPost("/{id:guid}/approve", ApproveMember).RequireAuthorization("Admin");
         group.MapPost("/{id:guid}/reject", RejectMember).RequireAuthorization("Admin");
         group.MapPost("/{id:guid}/suspend", SuspendMember).RequireAuthorization("Admin");
         group.MapPost("/{id:guid}/reinstate", ReinstateMember).RequireAuthorization("Admin");
         group.MapPost("/{id:guid}/roles", AssignRole).RequireAuthorization("Admin");
         group.MapDelete("/{id:guid}/roles/{role}", RemoveRole).RequireAuthorization("Admin");
-        group.MapGet("/pending", ListPendingMembers).RequireAuthorization("Admin");
+        group.MapGet("/pending", ListPendingMembers).RequireAuthorization("Trainer");
     }
 
     private static async Task<IResult> RegisterMember(RegisterMemberRequest request, ISender sender)
     {
         var command = new RegisterMemberCommand(
-            request.Provider, request.SubjectId, request.FirstName, request.LastName, request.Email);
+            request.FirstName, request.LastName, request.Email);
         var result = await sender.Send(command);
         return result.ToCreatedResult($"/api/v1/members/{result.Value}");
     }
@@ -116,6 +117,13 @@ public static class MemberEndpoints
     private static async Task<IResult> ListPendingMembers(int page, int pageSize, ISender sender)
     {
         var query = new ListPendingMembersQuery(page, pageSize);
+        var result = await sender.Send(query);
+        return result.ToApiResult();
+    }
+
+    private static async Task<IResult> ListTrainers(ISender sender)
+    {
+        var query = new ListTrainersQuery();
         var result = await sender.Send(query);
         return result.ToApiResult();
     }

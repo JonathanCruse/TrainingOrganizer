@@ -38,4 +38,8 @@ public sealed class CurrentUserService : ICurrentUserService
     public bool IsTrainer =>
         _httpContextAccessor.HttpContext?.User
             .IsInRole("Trainer") ?? false;
+
+    public bool IsGuest =>
+        _httpContextAccessor.HttpContext?.User
+            .IsInRole("Guest") ?? false;
 }

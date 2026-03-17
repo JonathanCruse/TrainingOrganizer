@@ -4,8 +4,11 @@ using Microsoft.Extensions.DependencyInjection;
 using TrainingOrganizer.Application.Common.Interfaces;
 using TrainingOrganizer.Application.Facility.Repositories;
 using TrainingOrganizer.Application.Membership.Repositories;
+using TrainingOrganizer.Application.Membership.Services;
 using TrainingOrganizer.Application.Training.Repositories;
 using TrainingOrganizer.Domain.Services;
+using TrainingOrganizer.Infrastructure.ExternalServices.EasyVerein;
+using TrainingOrganizer.Infrastructure.ExternalServices.Keycloak;
 using TrainingOrganizer.Infrastructure.Persistence;
 using TrainingOrganizer.Infrastructure.Persistence.Repositories;
 using TrainingOrganizer.Infrastructure.Persistence.Serialization;
@@ -42,6 +45,14 @@ public static class DependencyInjection
         services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
+
+        // External services — EasyVerein
+        services.Configure<EasyVereinSettings>(configuration.GetSection(EasyVereinSettings.SectionName));
+        services.AddHttpClient<IEasyVereinApiClient, EasyVereinApiClient>();
+
+        // External services — Keycloak Admin
+        services.Configure<KeycloakAdminSettings>(configuration.GetSection(KeycloakAdminSettings.SectionName));
+        services.AddHttpClient<IKeycloakAdminClient, KeycloakAdminClient>();
 
         return services;
     }

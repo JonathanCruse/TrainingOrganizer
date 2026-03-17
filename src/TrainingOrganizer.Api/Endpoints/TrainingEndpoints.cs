@@ -22,6 +22,8 @@ public static class TrainingEndpoints
         group.MapPost("/{id:guid}/complete", CompleteTraining);
         group.MapPost("/{id:guid}/participants", JoinTraining);
         group.MapDelete("/{id:guid}/participants/me", LeaveTraining);
+        group.MapPost("/{id:guid}/participants/{memberId:guid}/accept", AcceptParticipant);
+        group.MapPost("/{id:guid}/participants/{memberId:guid}/reject", RejectParticipant);
         group.MapPost("/{id:guid}/attendance", RecordAttendance);
         group.MapPost("/{id:guid}/trainers", AssignTrainer);
         group.MapDelete("/{id:guid}/trainers/{trainerId:guid}", RemoveTrainer);
@@ -97,6 +99,20 @@ public static class TrainingEndpoints
     private static async Task<IResult> LeaveTraining(Guid id, ISender sender)
     {
         var command = new LeaveTrainingCommand(id);
+        var result = await sender.Send(command);
+        return result.ToApiResult();
+    }
+
+    private static async Task<IResult> AcceptParticipant(Guid id, Guid memberId, ISender sender)
+    {
+        var command = new AcceptTrainingParticipantCommand(id, memberId);
+        var result = await sender.Send(command);
+        return result.ToApiResult();
+    }
+
+    private static async Task<IResult> RejectParticipant(Guid id, Guid memberId, ISender sender)
+    {
+        var command = new RejectTrainingParticipantCommand(id, memberId);
         var result = await sender.Send(command);
         return result.ToApiResult();
     }

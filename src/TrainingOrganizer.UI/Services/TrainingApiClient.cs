@@ -23,11 +23,20 @@ public sealed class TrainingApiClient(HttpClient http)
     public async Task<HttpResponseMessage> CancelAsync(Guid id, CancelTrainingRequest request)
         => await http.PostAsJsonAsync($"api/v1/trainings/{id}/cancel", request);
 
+    public async Task<HttpResponseMessage> CompleteAsync(Guid id)
+        => await http.PostAsync($"api/v1/trainings/{id}/complete", null);
+
     public async Task<HttpResponseMessage> JoinAsync(Guid id)
         => await http.PostAsync($"api/v1/trainings/{id}/participants", null);
 
     public async Task<HttpResponseMessage> LeaveAsync(Guid id)
         => await http.DeleteAsync($"api/v1/trainings/{id}/participants/me");
+
+    public async Task<HttpResponseMessage> AcceptParticipantAsync(Guid trainingId, Guid memberId)
+        => await http.PostAsync($"api/v1/trainings/{trainingId}/participants/{memberId}/accept", null);
+
+    public async Task<HttpResponseMessage> RejectParticipantAsync(Guid trainingId, Guid memberId)
+        => await http.PostAsync($"api/v1/trainings/{trainingId}/participants/{memberId}/reject", null);
 
     public async Task<HttpResponseMessage> RecordAttendanceAsync(Guid id, RecordAttendanceRequest request)
         => await http.PostAsJsonAsync($"api/v1/trainings/{id}/attendance", request);

@@ -308,6 +308,183 @@ public class TrainingTests
         act.Should().Throw<InvalidEntityStateException>();
     }
 
+    // --- RequestGuestParticipation ---
+
+    [Fact]
+    public void RequestGuestParticipation_PublishedTraining_CreatesPendingApprovalParticipant()
+    {
+        var training = TrainingFactory.CreatePublishedTraining();
+        var guestId = MemberId.Create();
+
+        training.RequestGuestParticipation(guestId);
+
+        training.Participants.Should().ContainSingle()
+            .Which.IsPendingApproval.Should().BeTrue();
+        training.PendingApprovalCount.Should().Be(1);
+        training.ConfirmedParticipantCount.Should().Be(0);
+    }
+
+    [Fact]
+    public void RequestGuestParticipation_PublishedTraining_RaisesGuestParticipationRequestedEvent()
+    {
+        var training = TrainingFactory.CreatePublishedTraining();
+        var guestId = MemberId.Create();
+
+        training.RequestGuestParticipation(guestId);
+
+        training.DomainEvents.Should().ContainSingle()
+            .Which.Should().BeOfType<GuestParticipationRequestedEvent>()
+            .Which.MemberId.Should().Be(guestId);
+    }
+
+    [Fact]
+    public void RequestGuestParticipation_DraftTraining_ThrowsInvalidEntityStateException()
+    {
+        var training = TrainingFactory.CreateDraftTraining();
+
+        var act = () => training.RequestGuestParticipation(MemberId.Create());
+
+        act.Should().Throw<InvalidEntityStateException>();
+    }
+
+    [Fact]
+    public void RequestGuestParticipation_DuplicateGuest_ThrowsBusinessRuleViolationException()
+    {
+        var training = TrainingFactory.CreatePublishedTraining();
+        var guestId = MemberId.Create();
+        training.RequestGuestParticipation(guestId);
+
+        var act = () => training.RequestGuestParticipation(guestId);
+
+        act.Should().Throw<BusinessRuleViolationException>();
+    }
+
+    [Fact]
+    public void RequestGuestParticipation_AlreadyConfirmedMember_ThrowsBusinessRuleViolationException()
+    {
+        var training = TrainingFactory.CreatePublishedTraining();
+        var memberId = MemberId.Create();
+        training.AddParticipant(memberId);
+
+        var act = () => training.RequestGuestParticipation(memberId);
+
+        act.Should().Throw<BusinessRuleViolationException>();
+    }
+
+    [Fact]
+    public void RequestGuestParticipation_DoesNotCountTowardCapacity()
+    {
+        var training = TrainingFactory.CreatePublishedTraining(capacity: new Capacity(0, 1));
+        training.RequestGuestParticipation(MemberId.Create());
+
+        // Adding a regular participant should still work — guest doesn't consume capacity
+        training.AddParticipant(MemberId.Create());
+
+        training.ConfirmedParticipantCount.Should().Be(1);
+        training.PendingApprovalCount.Should().Be(1);
+    }
+
+    // --- AcceptParticipant ---
+
+    [Fact]
+    public void AcceptParticipant_WithCapacity_ConfirmsParticipant()
+    {
+        var training = TrainingFactory.CreatePublishedTraining(capacity: new Capacity(0, 10));
+        var guestId = MemberId.Create();
+        training.RequestGuestParticipation(guestId);
+        training.ClearDomainEvents();
+
+        training.AcceptParticipant(guestId);
+
+        var participant = training.Participants.First(p => p.Id == guestId);
+        participant.IsConfirmed.Should().BeTrue();
+        training.ConfirmedParticipantCount.Should().Be(1);
+        training.PendingApprovalCount.Should().Be(0);
+    }
+
+    [Fact]
+    public void AcceptParticipant_AtCapacity_WaitlistsParticipant()
+    {
+        var training = TrainingFactory.CreatePublishedTraining(capacity: new Capacity(0, 1));
+        training.AddParticipant(MemberId.Create()); // fill capacity
+        var guestId = MemberId.Create();
+        training.RequestGuestParticipation(guestId);
+        training.ClearDomainEvents();
+
+        training.AcceptParticipant(guestId);
+
+        var participant = training.Participants.First(p => p.Id == guestId);
+        participant.IsWaitlisted.Should().BeTrue();
+        training.WaitlistCount.Should().Be(1);
+        training.PendingApprovalCount.Should().Be(0);
+    }
+
+    [Fact]
+    public void AcceptParticipant_RaisesGuestParticipantAcceptedEvent()
+    {
+        var training = TrainingFactory.CreatePublishedTraining();
+        var guestId = MemberId.Create();
+        training.RequestGuestParticipation(guestId);
+        training.ClearDomainEvents();
+
+        training.AcceptParticipant(guestId);
+
+        training.DomainEvents.Should().ContainSingle()
+            .Which.Should().BeOfType<GuestParticipantAcceptedEvent>();
+    }
+
+    [Fact]
+    public void AcceptParticipant_NonPendingMember_ThrowsEntityNotFoundException()
+    {
+        var training = TrainingFactory.CreatePublishedTraining();
+
+        var act = () => training.AcceptParticipant(MemberId.Create());
+
+        act.Should().Throw<EntityNotFoundException>();
+    }
+
+    // --- RejectParticipant ---
+
+    [Fact]
+    public void RejectParticipant_PendingGuest_CancelsParticipant()
+    {
+        var training = TrainingFactory.CreatePublishedTraining();
+        var guestId = MemberId.Create();
+        training.RequestGuestParticipation(guestId);
+        training.ClearDomainEvents();
+
+        training.RejectParticipant(guestId);
+
+        var participant = training.Participants.First(p => p.Id == guestId);
+        participant.Status.Should().Be(ParticipationStatus.Canceled);
+        training.PendingApprovalCount.Should().Be(0);
+    }
+
+    [Fact]
+    public void RejectParticipant_RaisesGuestParticipantRejectedEvent()
+    {
+        var training = TrainingFactory.CreatePublishedTraining();
+        var guestId = MemberId.Create();
+        training.RequestGuestParticipation(guestId);
+        training.ClearDomainEvents();
+
+        training.RejectParticipant(guestId);
+
+        training.DomainEvents.Should().ContainSingle()
+            .Which.Should().BeOfType<GuestParticipantRejectedEvent>()
+            .Which.MemberId.Should().Be(guestId);
+    }
+
+    [Fact]
+    public void RejectParticipant_NonPendingMember_ThrowsEntityNotFoundException()
+    {
+        var training = TrainingFactory.CreatePublishedTraining();
+
+        var act = () => training.RejectParticipant(MemberId.Create());
+
+        act.Should().Throw<EntityNotFoundException>();
+    }
+
     // --- AssignTrainer ---
 
     [Fact]

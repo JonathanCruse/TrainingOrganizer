@@ -38,10 +38,26 @@ public sealed class Participant : Entity<MemberId>
         };
     }
 
+    internal static Participant CreatePendingApproval(MemberId memberId)
+    {
+        return new Participant
+        {
+            Id = memberId,
+            Status = ParticipationStatus.PendingApproval,
+            JoinedAt = DateTimeOffset.UtcNow,
+            WaitlistPosition = null
+        };
+    }
+
     internal void Confirm()
     {
         Status = ParticipationStatus.Confirmed;
         WaitlistPosition = null;
+    }
+
+    internal void Waitlist()
+    {
+        Status = ParticipationStatus.Waitlisted;
     }
 
     internal void Cancel()
@@ -66,5 +82,6 @@ public sealed class Participant : Entity<MemberId>
 
     public bool IsConfirmed => Status == ParticipationStatus.Confirmed;
     public bool IsWaitlisted => Status == ParticipationStatus.Waitlisted;
+    public bool IsPendingApproval => Status == ParticipationStatus.PendingApproval;
     public bool IsActive => Status is ParticipationStatus.Confirmed or ParticipationStatus.Waitlisted;
 }

@@ -5,6 +5,7 @@ using TrainingOrganizer.Api.Endpoints;
 using TrainingOrganizer.Api.Middleware;
 using TrainingOrganizer.Application;
 using TrainingOrganizer.Infrastructure;
+using TrainingOrganizer.Infrastructure.Seeding;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -48,6 +49,12 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("Trainer", policy => policy.RequireRole("Trainer", "Admin"));
 });
 
+// Dev-only: seed test members from Keycloak users
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddHostedService<DevDataSeeder>();
+}
+
 var app = builder.Build();
 
 // Middleware
@@ -70,5 +77,6 @@ app.MapSessionEndpoints();
 app.MapLocationEndpoints();
 app.MapBookingEndpoints();
 app.MapScheduleEndpoints();
+app.MapImportEndpoints();
 
 app.Run();

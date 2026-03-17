@@ -9,6 +9,7 @@ dotnet build                                                    # Build full sol
 dotnet test                                                     # Run all tests
 dotnet test tests/TrainingOrganizer.Domain.Tests/               # Run domain tests
 dotnet test tests/TrainingOrganizer.Application.Tests/          # Run application tests
+dotnet test tests/TrainingOrganizer.UI.Tests/                   # Run UI tests (bunit)
 dotnet test --filter "FullyQualifiedName~ClassName.MethodName"  # Run single test
 ```
 
@@ -16,7 +17,7 @@ dotnet test --filter "FullyQualifiedName~ClassName.MethodName"  # Run single tes
 
 ```bash
 docker compose -f docker/docker-compose.dev.yml up -d           # Start MongoDB + Keycloak only
-docker compose -f docker/docker-compose.yml up --build           # Start full stack
+docker compose -f docker/docker-compose.prod.yml up --build      # Start full stack
 ```
 
 ## Architecture
@@ -30,7 +31,11 @@ Api → Infrastructure → Application → Domain
 - **Domain** — Pure domain layer, zero NuGet dependencies. Contains aggregates, entities, value objects, domain events, domain service interfaces, and exceptions.
 - **Application** — CQRS via MediatR (commands/queries/handlers), FluentValidation, repository interfaces, DTOs, domain event handlers. References Domain.
 - **Infrastructure** — MongoDB persistence (document-based mapping, repositories), Keycloak JWT auth, domain service implementations (RoomBookingService, SessionGenerationService, MemberUniquenessService). References Application.
-- **Api** — ASP.NET Core minimal API endpoints, request/response contracts, exception-handling middleware. References Infrastructure.
+- **Api** — ASP.NET Core minimal API endpoints, OpenAPI, exception-handling middleware. References Infrastructure.
+- **Shared** — API contracts (request/response records, enums) shared between backend and frontend.
+- **UI** — Razor Class Library with Blazor pages, layouts, MudBlazor components, API client services. Shared by Web and Mobile hosts.
+- **Web** — Blazor WebAssembly host with OIDC auth (Keycloak). Thin host around UI library.
+- **Mobile** — MAUI Blazor Hybrid host (iOS/Android). Same UI components in native shell.
 
 ## Domain Model (3 Bounded Contexts)
 

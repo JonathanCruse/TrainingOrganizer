@@ -1,8 +1,6 @@
 namespace TrainingOrganizer.Api.Contracts;
 
 public sealed record RegisterMemberRequest(
-    string Provider,
-    string SubjectId,
     string FirstName,
     string LastName,
     string Email);

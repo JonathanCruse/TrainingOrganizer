@@ -3,6 +3,7 @@ using MediatR;
 using TrainingOrganizer.Application.Common.Interfaces;
 using TrainingOrganizer.Application.Common.Models;
 using TrainingOrganizer.Application.Membership.Repositories;
+using TrainingOrganizer.Application.Membership.Services;
 using TrainingOrganizer.Domain.Exceptions;
 using TrainingOrganizer.Domain.Membership;
 using TrainingOrganizer.Domain.Membership.ValueObjects;
@@ -11,8 +12,6 @@ using TrainingOrganizer.Domain.Services;
 namespace TrainingOrganizer.Application.Membership.Commands;
 
 public sealed record RegisterMemberCommand(
-    string Provider,
-    string SubjectId,
     string FirstName,
     string LastName,
     string Email) : IRequest<Result<Guid>>;
@@ -21,15 +20,18 @@ public sealed class RegisterMemberCommandHandler : IRequestHandler<RegisterMembe
 {
     private readonly IMemberRepository _memberRepository;
     private readonly IMemberUniquenessService _memberUniquenessService;
+    private readonly IKeycloakAdminClient _keycloakAdminClient;
     private readonly IUnitOfWork _unitOfWork;
 
     public RegisterMemberCommandHandler(
         IMemberRepository memberRepository,
         IMemberUniquenessService memberUniquenessService,
+        IKeycloakAdminClient keycloakAdminClient,
         IUnitOfWork unitOfWork)
     {
         _memberRepository = memberRepository;
         _memberUniquenessService = memberUniquenessService;
+        _keycloakAdminClient = keycloakAdminClient;
         _unitOfWork = unitOfWork;
     }
 
@@ -42,7 +44,12 @@ public sealed class RegisterMemberCommandHandler : IRequestHandler<RegisterMembe
             if (!isUnique)
                 return Result.Failure<Guid>("Member.DuplicateEmail", "A member with this email address already exists.");
 
-            var externalIdentity = new ExternalIdentity(request.Provider, request.SubjectId);
+            var keycloakUserId = await _keycloakAdminClient.CreateOrGetUserAsync(
+                request.Email, request.FirstName, request.LastName, cancellationToken);
+
+            await _keycloakAdminClient.AssignRealmRoleAsync(keycloakUserId, "Member", cancellationToken);
+
+            var externalIdentity = new ExternalIdentity("keycloak", keycloakUserId);
             var name = new PersonName(request.FirstName, request.LastName);
 
             var member = Member.Register(externalIdentity, name, email);
@@ -63,8 +70,6 @@ public sealed class RegisterMemberCommandValidator : AbstractValidator<RegisterM
 {
     public RegisterMemberCommandValidator()
     {
-        RuleFor(x => x.Provider).NotEmpty().MaximumLength(100);
-        RuleFor(x => x.SubjectId).NotEmpty().MaximumLength(256);
         RuleFor(x => x.FirstName).NotEmpty().MaximumLength(100);
         RuleFor(x => x.LastName).NotEmpty().MaximumLength(100);
         RuleFor(x => x.Email).NotEmpty().EmailAddress();

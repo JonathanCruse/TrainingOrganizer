@@ -4,5 +4,6 @@ public enum ParticipationStatus
 {
     Confirmed = 0,
     Waitlisted = 1,
-    Canceled = 2
+    Canceled = 2,
+    PendingApproval = 3
 }

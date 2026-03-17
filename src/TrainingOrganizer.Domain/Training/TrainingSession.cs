@@ -159,6 +159,46 @@ public sealed class TrainingSession : AggregateRoot<TrainingSessionId>
             DateTimeOffset.UtcNow));
     }
 
+    public void RequestGuestParticipation(MemberId memberId)
+    {
+        Guard.AgainstNull(memberId, nameof(memberId));
+
+        if (Status != SessionStatus.Scheduled)
+            throw new InvalidEntityStateException(nameof(TrainingSession), Status.ToString(), "request guest participation");
+
+        _participantManager.AddGuestParticipant(memberId);
+
+        AddDomainEvent(new GuestParticipationRequestedEvent(Id.Value, memberId, DateTimeOffset.UtcNow));
+    }
+
+    public void AcceptParticipant(MemberId memberId)
+    {
+        Guard.AgainstNull(memberId, nameof(memberId));
+
+        if (Status != SessionStatus.Scheduled)
+            throw new InvalidEntityStateException(nameof(TrainingSession), Status.ToString(), "accept participant");
+
+        var (participant, wasWaitlisted) = _participantManager.AcceptParticipant(memberId, EffectiveCapacity);
+
+        AddDomainEvent(new GuestParticipantAcceptedEvent(
+            Id.Value,
+            memberId,
+            wasWaitlisted ? ParticipationStatus.Waitlisted : ParticipationStatus.Confirmed,
+            DateTimeOffset.UtcNow));
+    }
+
+    public void RejectParticipant(MemberId memberId)
+    {
+        Guard.AgainstNull(memberId, nameof(memberId));
+
+        if (Status != SessionStatus.Scheduled)
+            throw new InvalidEntityStateException(nameof(TrainingSession), Status.ToString(), "reject participant");
+
+        _participantManager.RejectParticipant(memberId);
+
+        AddDomainEvent(new GuestParticipantRejectedEvent(Id.Value, memberId, DateTimeOffset.UtcNow));
+    }
+
     public void RemoveParticipant(MemberId memberId)
     {
         Guard.AgainstNull(memberId, nameof(memberId));
@@ -188,4 +228,5 @@ public sealed class TrainingSession : AggregateRoot<TrainingSessionId>
 
     public int ConfirmedParticipantCount => _participantManager.ConfirmedCount;
     public int WaitlistCount => _participantManager.WaitlistCount;
+    public int PendingApprovalCount => _participantManager.PendingApprovalCount;
 }

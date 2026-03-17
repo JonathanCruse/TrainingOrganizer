@@ -72,6 +72,22 @@ public sealed class MemberRepository : IMemberRepository
         return new PagedList<Member>(items, page, pageSize, (int)totalCount);
     }
 
+    public async Task<List<Member>> GetTrainersAsync(CancellationToken ct = default)
+    {
+        var filter = Builders<MemberDocument>.Filter.And(
+            Builders<MemberDocument>.Filter.Eq(d => d.RegistrationStatus, RegistrationStatus.Approved.ToString()),
+            Builders<MemberDocument>.Filter.Or(
+                Builders<MemberDocument>.Filter.AnyEq(d => d.Roles, MemberRole.Trainer.ToString()),
+                Builders<MemberDocument>.Filter.AnyEq(d => d.Roles, MemberRole.Admin.ToString())));
+
+        var documents = await _context.Members
+            .Find(filter)
+            .Sort(Builders<MemberDocument>.Sort.Ascending(d => d.LastName).Ascending(d => d.FirstName))
+            .ToListAsync(ct);
+
+        return documents.Select(d => d.ToDomain()).ToList();
+    }
+
     public async Task AddAsync(Member member, CancellationToken ct = default)
     {
         var document = MemberDocument.FromDomain(member);

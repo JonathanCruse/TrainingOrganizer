@@ -5,19 +5,20 @@ using TrainingOrganizer.Application.Common.Interfaces;
 using TrainingOrganizer.Application.Common.Models;
 using TrainingOrganizer.Application.Training.Repositories;
 using TrainingOrganizer.Domain.Exceptions;
+using TrainingOrganizer.Domain.Membership.ValueObjects;
 using TrainingOrganizer.Domain.Training.ValueObjects;
 
 namespace TrainingOrganizer.Application.Training.Commands;
 
-public sealed record JoinTrainingCommand(Guid TrainingId) : IRequest<Result>;
+public sealed record RejectTrainingParticipantCommand(Guid TrainingId, Guid MemberId) : IRequest<Result>;
 
-public sealed class JoinTrainingCommandHandler : IRequestHandler<JoinTrainingCommand, Result>
+public sealed class RejectTrainingParticipantCommandHandler : IRequestHandler<RejectTrainingParticipantCommand, Result>
 {
     private readonly ITrainingRepository _trainingRepository;
     private readonly ICurrentUserService _currentUserService;
     private readonly IUnitOfWork _unitOfWork;
 
-    public JoinTrainingCommandHandler(
+    public RejectTrainingParticipantCommandHandler(
         ITrainingRepository trainingRepository,
         ICurrentUserService currentUserService,
         IUnitOfWork unitOfWork)
@@ -27,21 +28,18 @@ public sealed class JoinTrainingCommandHandler : IRequestHandler<JoinTrainingCom
         _unitOfWork = unitOfWork;
     }
 
-    public async Task<Result> Handle(JoinTrainingCommand request, CancellationToken cancellationToken)
+    public async Task<Result> Handle(RejectTrainingParticipantCommand request, CancellationToken cancellationToken)
     {
         try
         {
-            var currentUserId = _currentUserService.MemberId
-                ?? throw new ForbiddenException("You must be authenticated to join a training.");
+            if (!_currentUserService.IsAdmin && !_currentUserService.IsTrainer)
+                throw new ForbiddenException("Only admins or trainers can reject participants.");
 
             var trainingId = new TrainingId(request.TrainingId);
             var training = await _trainingRepository.GetByIdAsync(trainingId, cancellationToken)
                 ?? throw new NotFoundException(nameof(Domain.Training.Training), request.TrainingId);
 
-            if (_currentUserService.IsGuest)
-                training.RequestGuestParticipation(currentUserId);
-            else
-                training.AddParticipant(currentUserId);
+            training.RejectParticipant(new MemberId(request.MemberId));
 
             await _trainingRepository.UpdateAsync(training, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -55,10 +53,11 @@ public sealed class JoinTrainingCommandHandler : IRequestHandler<JoinTrainingCom
     }
 }
 
-public sealed class JoinTrainingCommandValidator : AbstractValidator<JoinTrainingCommand>
+public sealed class RejectTrainingParticipantCommandValidator : AbstractValidator<RejectTrainingParticipantCommand>
 {
-    public JoinTrainingCommandValidator()
+    public RejectTrainingParticipantCommandValidator()
     {
         RuleFor(x => x.TrainingId).NotEmpty();
+        RuleFor(x => x.MemberId).NotEmpty();
     }
 }

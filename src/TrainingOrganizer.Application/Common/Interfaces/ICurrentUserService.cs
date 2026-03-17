@@ -8,4 +8,5 @@ public interface ICurrentUserService
     bool IsAuthenticated { get; }
     bool IsAdmin { get; }
     bool IsTrainer { get; }
+    bool IsGuest { get; }
 }

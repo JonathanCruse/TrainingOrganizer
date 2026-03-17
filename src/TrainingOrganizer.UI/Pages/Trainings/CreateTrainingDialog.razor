@@ -1,5 +1,6 @@
 @inject TrainingApiClient TrainingApi
 @inject MemberApiClient MemberApi
+@inject AuthenticationStateProvider AuthStateProvider
 
 <MudDialog>
     <TitleContent>
@@ -80,17 +81,17 @@
 
     protected override async Task OnInitializedAsync()
     {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var memberIdClaim = authState.User.FindFirst("member_id")?.Value;
+        Guid? currentMemberId = memberIdClaim is not null && Guid.TryParse(memberIdClaim, out var id) ? id : null;
+
         try
         {
-            var result = await MemberApi.GetAllAsync(1, 100);
-            if (result?.Items is not null)
-            {
-                _trainers = result.Items
-                    .Where(m => m.Roles.Contains(MemberRole.Trainer) || m.Roles.Contains(MemberRole.Admin))
-                    .Where(m => m.Status == RegistrationStatus.Approved)
-                    .ToList();
-                _trainerLookup = _trainers.ToDictionary(t => t.Id, t => $"{t.FirstName} {t.LastName}");
-            }
+            _trainers = await MemberApi.GetTrainersAsync();
+            _trainerLookup = _trainers.ToDictionary(t => t.Id, t => $"{t.FirstName} {t.LastName}");
+
+            if (currentMemberId.HasValue && _trainers.Any(t => t.Id == currentMemberId.Value))
+                _selectedTrainerIds = [currentMemberId.Value];
         }
         catch
         {

@@ -12,12 +12,6 @@
                           RequiredError="Last name is required" Class="mb-3" />
             <MudTextField @bind-Value="_email" Label="Email" Required="true" InputType="InputType.Email"
                           RequiredError="Email is required" Class="mb-3" />
-            <MudTextField @bind-Value="_provider" Label="Identity Provider" Required="true"
-                          RequiredError="Provider is required" Class="mb-3"
-                          HelperText="e.g. keycloak" />
-            <MudTextField @bind-Value="_subjectId" Label="Subject ID" Required="true"
-                          RequiredError="Subject ID is required" Class="mb-3"
-                          HelperText="External identity provider user ID" />
         </MudForm>
         @if (_error is not null)
         {
@@ -49,8 +43,6 @@
     private string _firstName = string.Empty;
     private string _lastName = string.Empty;
     private string _email = string.Empty;
-    private string _provider = "keycloak";
-    private string _subjectId = string.Empty;
 
     private void Cancel() => MudDialog.Cancel();
 
@@ -64,7 +56,7 @@
 
         try
         {
-            var request = new RegisterMemberRequest(_provider, _subjectId, _firstName, _lastName, _email);
+            var request = new RegisterMemberRequest(_firstName, _lastName, _email);
             var response = await MemberApi.RegisterAsync(request);
             if (response.IsSuccessStatusCode)
             {

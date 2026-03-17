@@ -24,8 +24,12 @@
             </MudSelect>
             <MudTimePicker @bind-Time="_timeOfDay" Label="Time of Day" Required="true"
                            RequiredError="Time is required" Class="mb-3" />
-            <MudTimePicker @bind-Time="_duration" Label="Duration" Required="true"
-                           RequiredError="Duration is required" Class="mb-3" />
+            <div class="d-flex gap-3 mb-3">
+                <MudNumericField @bind-Value="_durationHours" Label="Duration (hours)" Min="0" Max="23"
+                                 Required="true" RequiredError="Hours is required" Style="flex:1" />
+                <MudNumericField @bind-Value="_durationMinutes" Label="Duration (minutes)" Min="0" Max="59"
+                                 Required="true" RequiredError="Minutes is required" Style="flex:1" />
+            </div>
             <MudDatePicker @bind-Date="_startDate" Label="Start Date" Required="true"
                            RequiredError="Start date is required" Class="mb-3" />
             <MudDatePicker @bind-Date="_endDate" Label="End Date (optional)" Class="mb-3" />
@@ -80,7 +84,9 @@
     private RecurrencePattern _pattern = RecurrencePattern.Weekly;
     private DayOfWeek _dayOfWeek = DayOfWeek.Monday;
     private TimeSpan? _timeOfDay = new(18, 0, 0);
-    private TimeSpan? _duration = new(1, 0, 0);
+    private int _durationHours = 1;
+    private int _durationMinutes;
+    private TimeSpan Duration => new(_durationHours, _durationMinutes, 0);
     private DateTime? _startDate = DateTime.Today;
     private DateTime? _endDate;
     private int _minCapacity = 1;
@@ -95,15 +101,8 @@
     {
         try
         {
-            var result = await MemberApi.GetAllAsync(1, 100);
-            if (result?.Items is not null)
-            {
-                _trainers = result.Items
-                    .Where(m => m.Roles.Contains(MemberRole.Trainer) || m.Roles.Contains(MemberRole.Admin))
-                    .Where(m => m.Status == RegistrationStatus.Approved)
-                    .ToList();
-                _trainerLookup = _trainers.ToDictionary(t => t.Id, t => $"{t.FirstName} {t.LastName}");
-            }
+            _trainers = await MemberApi.GetTrainersAsync();
+            _trainerLookup = _trainers.ToDictionary(t => t.Id, t => $"{t.FirstName} {t.LastName}");
         }
         catch
         {
@@ -133,7 +132,7 @@
                 _pattern.ToString(),
                 _dayOfWeek,
                 _timeOfDay!.Value.ToString(@"hh\:mm"),
-                _duration!.Value.ToString(@"hh\:mm"),
+                Duration.ToString(@"hh\:mm"),
                 _startDate!.Value.ToString("yyyy-MM-dd"),
                 _endDate?.ToString("yyyy-MM-dd"));
 

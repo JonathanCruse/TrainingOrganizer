@@ -51,6 +51,28 @@ public sealed class Member : AggregateRoot<MemberId>
         return member;
     }
 
+    public static Member Import(ExternalIdentity externalIdentity, PersonName name, Email email)
+    {
+        Guard.AgainstNull(externalIdentity, nameof(externalIdentity));
+        Guard.AgainstNull(name, nameof(name));
+        Guard.AgainstNull(email, nameof(email));
+
+        var member = new Member
+        {
+            Id = MemberId.Create(),
+            ExternalIdentity = externalIdentity,
+            Name = name,
+            Email = email,
+            RegistrationStatus = RegistrationStatus.Approved,
+            RegisteredAt = DateTimeOffset.UtcNow,
+            ApprovedAt = DateTimeOffset.UtcNow
+        };
+
+        member._roles.Add(MemberRole.Member);
+        member.AddDomainEvent(new MemberImportedEvent(member.Id, email, externalIdentity.Provider, DateTimeOffset.UtcNow));
+        return member;
+    }
+
     public void Approve(MemberId approvedBy)
     {
         Guard.AgainstNull(approvedBy, nameof(approvedBy));

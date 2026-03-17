@@ -19,6 +19,8 @@ public static class SessionEndpoints
         group.MapGet("/{id:guid}", GetSession);
         group.MapPost("/{id:guid}/participants", JoinSession);
         group.MapDelete("/{id:guid}/participants/me", LeaveSession);
+        group.MapPost("/{id:guid}/participants/{memberId:guid}/accept", AcceptSessionParticipant);
+        group.MapPost("/{id:guid}/participants/{memberId:guid}/reject", RejectSessionParticipant);
         group.MapPost("/{id:guid}/cancel", CancelSession);
         group.MapPost("/{id:guid}/complete", CompleteSession);
         group.MapPut("/{id:guid}/overrides", ApplySessionOverrides);
@@ -50,6 +52,20 @@ public static class SessionEndpoints
     private static async Task<IResult> LeaveSession(Guid id, ISender sender)
     {
         var command = new LeaveSessionCommand(id);
+        var result = await sender.Send(command);
+        return result.ToApiResult();
+    }
+
+    private static async Task<IResult> AcceptSessionParticipant(Guid id, Guid memberId, ISender sender)
+    {
+        var command = new AcceptSessionParticipantCommand(id, memberId);
+        var result = await sender.Send(command);
+        return result.ToApiResult();
+    }
+
+    private static async Task<IResult> RejectSessionParticipant(Guid id, Guid memberId, ISender sender)
+    {
+        var command = new RejectSessionParticipantCommand(id, memberId);
         var result = await sender.Send(command);
         return result.ToApiResult();
     }

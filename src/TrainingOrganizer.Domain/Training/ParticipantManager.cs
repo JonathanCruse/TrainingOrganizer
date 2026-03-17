@@ -24,7 +24,7 @@ internal sealed class ParticipantManager
 
     public (Participant participant, bool wasWaitlisted) AddParticipant(MemberId memberId, Capacity capacity)
     {
-        if (_participants.Any(p => p.Id == memberId && p.IsActive))
+        if (_participants.Any(p => p.Id == memberId && (p.IsActive || p.IsPendingApproval)))
             throw new BusinessRuleViolationException(
                 "DuplicateParticipant",
                 "Member is already participating in this training.");
@@ -41,6 +41,46 @@ internal sealed class ParticipantManager
         _participants.Add(confirmed);
         return (confirmed, false);
     }
+
+    public Participant AddGuestParticipant(MemberId memberId)
+    {
+        if (_participants.Any(p => p.Id == memberId && (p.IsActive || p.IsPendingApproval)))
+            throw new BusinessRuleViolationException(
+                "DuplicateParticipant",
+                "Member is already participating in this training.");
+
+        var pending = Participant.CreatePendingApproval(memberId);
+        _participants.Add(pending);
+        return pending;
+    }
+
+    public (Participant participant, bool wasWaitlisted) AcceptParticipant(MemberId memberId, Capacity capacity)
+    {
+        var participant = _participants.FirstOrDefault(p => p.Id == memberId && p.IsPendingApproval)
+                          ?? throw new EntityNotFoundException("Pending participant", memberId);
+
+        if (capacity.IsFull(ConfirmedCount))
+        {
+            var position = WaitlistCount + 1;
+            participant.UpdateWaitlistPosition(position);
+            participant.Waitlist();
+            return (participant, true);
+        }
+
+        participant.Confirm();
+        return (participant, false);
+    }
+
+    public Participant RejectParticipant(MemberId memberId)
+    {
+        var participant = _participants.FirstOrDefault(p => p.Id == memberId && p.IsPendingApproval)
+                          ?? throw new EntityNotFoundException("Pending participant", memberId);
+
+        participant.Cancel();
+        return participant;
+    }
+
+    public int PendingApprovalCount => _participants.Count(p => p.IsPendingApproval);
 
     public (Participant canceled, Participant? promoted) RemoveParticipant(MemberId memberId)
     {
