@@ -1,17 +1,21 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/TrainingOrganizer.SharedKernel/TrainingOrganizer.SharedKernel.csproj" />
+    <Project Path="src/TrainingOrganizer.Membership/TrainingOrganizer.Membership.csproj" />
+    <Project Path="src/TrainingOrganizer.Training/TrainingOrganizer.Training.csproj" />
+    <Project Path="src/TrainingOrganizer.Facility/TrainingOrganizer.Facility.csproj" />
+    <Project Path="src/TrainingOrganizer.Adapter.EasyVerein/TrainingOrganizer.Adapter.EasyVerein.csproj" />
+    <Project Path="src/TrainingOrganizer.Adapter.Keycloak/TrainingOrganizer.Adapter.Keycloak.csproj" />
     <Project Path="src/TrainingOrganizer.Api/TrainingOrganizer.Api.csproj" />
-    <Project Path="src/TrainingOrganizer.Application/TrainingOrganizer.Application.csproj" />
-    <Project Path="src/TrainingOrganizer.Domain/TrainingOrganizer.Domain.csproj" />
-    <Project Path="src/TrainingOrganizer.Infrastructure/TrainingOrganizer.Infrastructure.csproj" />
     <Project Path="src/TrainingOrganizer.Shared/TrainingOrganizer.Shared.csproj" />
     <Project Path="src/TrainingOrganizer.UI/TrainingOrganizer.UI.csproj" />
     <Project Path="src/TrainingOrganizer.Web/TrainingOrganizer.Web.csproj" />
     <Project Path="src/TrainingOrganizer.Mobile/TrainingOrganizer.Mobile.csproj" />
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="tests/TrainingOrganizer.Application.Tests/TrainingOrganizer.Application.Tests.csproj" />
-    <Project Path="tests/TrainingOrganizer.Domain.Tests/TrainingOrganizer.Domain.Tests.csproj" />
+    <Project Path="tests/TrainingOrganizer.Membership.Tests/TrainingOrganizer.Membership.Tests.csproj" />
+    <Project Path="tests/TrainingOrganizer.Training.Tests/TrainingOrganizer.Training.Tests.csproj" />
+    <Project Path="tests/TrainingOrganizer.Facility.Tests/TrainingOrganizer.Facility.Tests.csproj" />
     <Project Path="tests/TrainingOrganizer.UI.Tests/TrainingOrganizer.UI.Tests.csproj" />
   </Folder>
 </Solution>

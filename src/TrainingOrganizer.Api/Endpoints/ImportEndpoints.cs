@@ -1,6 +1,6 @@
 using MediatR;
 using TrainingOrganizer.Api.Extensions;
-using TrainingOrganizer.Application.Membership.Commands;
+using TrainingOrganizer.Membership.Application.Commands;
 
 namespace TrainingOrganizer.Api.Endpoints;
 

@@ -1,9 +1,9 @@
 using MediatR;
 using TrainingOrganizer.Api.Contracts;
 using TrainingOrganizer.Api.Extensions;
-using TrainingOrganizer.Application.Membership.Commands;
-using TrainingOrganizer.Application.Membership.Queries;
-using TrainingOrganizer.Domain.Membership.Enums;
+using TrainingOrganizer.Membership.Application.Commands;
+using TrainingOrganizer.Membership.Application.Queries;
+using TrainingOrganizer.Membership.Domain.Enums;
 
 namespace TrainingOrganizer.Api.Endpoints;
 

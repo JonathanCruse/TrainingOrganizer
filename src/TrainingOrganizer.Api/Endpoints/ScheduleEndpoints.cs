@@ -1,6 +1,6 @@
 using MediatR;
 using TrainingOrganizer.Api.Extensions;
-using TrainingOrganizer.Application.Schedule.Queries;
+using TrainingOrganizer.Training.Application.Schedule.Queries;
 
 namespace TrainingOrganizer.Api.Endpoints;
 

@@ -1,4 +1,4 @@
-using TrainingOrganizer.Application.Common.Models;
+using TrainingOrganizer.SharedKernel.Application.Models;
 
 namespace TrainingOrganizer.Api.Extensions;
 

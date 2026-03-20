@@ -1,7 +1,7 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
-using TrainingOrganizer.Application.Common.Exceptions;
-using TrainingOrganizer.Domain.Exceptions;
+using TrainingOrganizer.SharedKernel.Application.Exceptions;
+using TrainingOrganizer.SharedKernel.Domain.Exceptions;
 
 namespace TrainingOrganizer.Api.Middleware;
 

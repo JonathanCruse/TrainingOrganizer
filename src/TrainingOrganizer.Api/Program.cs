@@ -1,17 +1,44 @@
+using FluentValidation;
+using MediatR;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using TrainingOrganizer.Adapter.EasyVerein;
+using TrainingOrganizer.Adapter.Keycloak;
 using TrainingOrganizer.Api.Endpoints;
 using TrainingOrganizer.Api.Middleware;
-using TrainingOrganizer.Application;
-using TrainingOrganizer.Infrastructure;
-using TrainingOrganizer.Infrastructure.Seeding;
+using TrainingOrganizer.Membership;
+using TrainingOrganizer.Membership.Infrastructure.Seeding;
+using TrainingOrganizer.SharedKernel;
+using TrainingOrganizer.Training;
+using TrainingOrganizer.Facility;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services
-builder.Services.AddApplication();
-builder.Services.AddInfrastructure(builder.Configuration);
+// Add shared kernel (MongoDB, UnitOfWork, pipeline behaviors)
+builder.Services.AddSharedKernel(builder.Configuration);
+
+// Add bounded contexts
+builder.Services.AddMembership();
+builder.Services.AddTraining();
+builder.Services.AddFacility();
+
+// Add adapters
+builder.Services.AddEasyVereinAdapter(builder.Configuration);
+builder.Services.AddKeycloakAdapter(builder.Configuration);
+
+// MediatR — scan all slice assemblies
+builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblies(
+    typeof(TrainingOrganizer.Membership.DependencyInjection).Assembly,
+    typeof(TrainingOrganizer.Training.DependencyInjection).Assembly,
+    typeof(TrainingOrganizer.Facility.DependencyInjection).Assembly));
+
+// FluentValidation — scan all slice assemblies
+builder.Services.AddValidatorsFromAssemblies([
+    typeof(TrainingOrganizer.Membership.DependencyInjection).Assembly,
+    typeof(TrainingOrganizer.Training.DependencyInjection).Assembly,
+    typeof(TrainingOrganizer.Facility.DependencyInjection).Assembly]);
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddOpenApi();
 

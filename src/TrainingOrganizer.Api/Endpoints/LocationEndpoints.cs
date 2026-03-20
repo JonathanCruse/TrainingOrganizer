@@ -1,8 +1,8 @@
 using MediatR;
 using TrainingOrganizer.Api.Contracts;
 using TrainingOrganizer.Api.Extensions;
-using TrainingOrganizer.Application.Facility.Commands;
-using TrainingOrganizer.Application.Facility.Queries;
+using TrainingOrganizer.Facility.Application.Commands;
+using TrainingOrganizer.Facility.Application.Queries;
 
 namespace TrainingOrganizer.Api.Endpoints;
 

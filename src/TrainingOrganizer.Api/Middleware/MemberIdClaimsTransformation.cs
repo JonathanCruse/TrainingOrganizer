@@ -1,6 +1,6 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
-using TrainingOrganizer.Application.Membership.Repositories;
+using TrainingOrganizer.Membership.Application.Repositories;
 
 namespace TrainingOrganizer.Api.Middleware;
 

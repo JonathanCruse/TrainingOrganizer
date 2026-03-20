@@ -11,7 +11,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\TrainingOrganizer.Infrastructure\TrainingOrganizer.Infrastructure.csproj" />
+    <ProjectReference Include="..\TrainingOrganizer.SharedKernel\TrainingOrganizer.SharedKernel.csproj" />
+    <ProjectReference Include="..\TrainingOrganizer.Membership\TrainingOrganizer.Membership.csproj" />
+    <ProjectReference Include="..\TrainingOrganizer.Training\TrainingOrganizer.Training.csproj" />
+    <ProjectReference Include="..\TrainingOrganizer.Facility\TrainingOrganizer.Facility.csproj" />
+    <ProjectReference Include="..\TrainingOrganizer.Adapter.EasyVerein\TrainingOrganizer.Adapter.EasyVerein.csproj" />
+    <ProjectReference Include="..\TrainingOrganizer.Adapter.Keycloak\TrainingOrganizer.Adapter.Keycloak.csproj" />
   </ItemGroup>
 
 </Project>
