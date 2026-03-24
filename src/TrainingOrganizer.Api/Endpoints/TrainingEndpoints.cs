@@ -2,6 +2,7 @@ using MediatR;
 using TrainingOrganizer.Api.Contracts;
 using TrainingOrganizer.Api.Extensions;
 using TrainingOrganizer.Training.Application.Commands;
+using TrainingOrganizer.Training.Application.DTOs;
 using TrainingOrganizer.Training.Application.Queries;
 using TrainingOrganizer.Training.Domain.Enums;
 
@@ -32,9 +33,12 @@ public static class TrainingEndpoints
     private static async Task<IResult> CreateTraining(CreateTrainingRequest request, ISender sender)
     {
         var visibility = Enum.Parse<Visibility>(request.Visibility, ignoreCase: true);
+        var roomRequirements = request.RoomRequirements
+            .Select(r => new RoomRequirementDto(r.RoomId, r.LocationId))
+            .ToList();
         var command = new CreateTrainingCommand(
             request.Title, request.Description, request.Start, request.End,
-            request.MinCapacity, request.MaxCapacity, visibility, request.TrainerIds);
+            request.MinCapacity, request.MaxCapacity, visibility, request.TrainerIds, roomRequirements);
         var result = await sender.Send(command);
         return result.ToCreatedResult($"/api/v1/trainings/{result.Value}");
     }

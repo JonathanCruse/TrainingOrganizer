@@ -15,8 +15,5 @@
     <ProjectReference Include="..\TrainingOrganizer.SharedKernel\TrainingOrganizer.SharedKernel.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.5" />
-  </ItemGroup>
 
 </Project>

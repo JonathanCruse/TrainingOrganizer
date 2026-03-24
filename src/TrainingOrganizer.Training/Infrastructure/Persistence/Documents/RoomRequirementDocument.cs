@@ -1,5 +1,5 @@
 using TrainingOrganizer.SharedKernel.Infrastructure.Persistence;
-using TrainingOrganizer.Domain.Facility.ValueObjects;
+using TrainingOrganizer.Facility.Domain.ValueObjects;
 using TrainingOrganizer.Training.Domain.ValueObjects;
 
 namespace TrainingOrganizer.Training.Infrastructure.Persistence.Documents;

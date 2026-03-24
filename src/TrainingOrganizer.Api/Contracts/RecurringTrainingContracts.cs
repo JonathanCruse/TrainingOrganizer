@@ -7,12 +7,15 @@ public sealed record CreateRecurringTrainingRequest(
     int MaxCapacity,
     string Visibility,
     List<Guid> TrainerIds,
+    List<RoomRequirementRequest> RoomRequirements,
     string Pattern,
     DayOfWeek DayOfWeek,
     string TimeOfDay,
     string Duration,
     string StartDate,
     string? EndDate);
+
+public sealed record RoomRequirementRequest(Guid RoomId, Guid LocationId);
 
 public sealed record GenerateSessionsRequest(
     DateTimeOffset Until);

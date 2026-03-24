@@ -1,0 +1,206 @@
+@page "/sessions"
+@page "/sessions/recurring/{RecurringTrainingId:guid}"
+@inject SessionApiClient SessionApi
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+
+<PageTitle>Sessions</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+        @if (RecurringTrainingId.HasValue)
+        {
+            <MudButton StartIcon="@Icons.Material.Filled.ArrowBack" Variant="Variant.Text"
+                       OnClick="@(() => Nav.NavigateTo("/recurring-trainings"))">
+                Back
+            </MudButton>
+        }
+        <MudText Typo="Typo.h4">Sessions</MudText>
+    </MudStack>
+</MudStack>
+
+<MudStack Row="true" Spacing="2" Class="mb-4" AlignItems="AlignItems.Center">
+    <MudDatePicker Label="From" Date="_fromDate" Clearable="true" Variant="Variant.Outlined"
+                   Margin="Margin.Dense" DateChanged="OnFromDateChanged" />
+    <MudDatePicker Label="To" Date="_toDate" Clearable="true" Variant="Variant.Outlined"
+                   Margin="Margin.Dense" DateChanged="OnToDateChanged" />
+</MudStack>
+
+@if (_loading)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else if (_error is not null)
+{
+    <MudAlert Severity="Severity.Error">@_error</MudAlert>
+}
+else if (_sessions is null || _sessions.Count == 0)
+{
+    <MudAlert Severity="Severity.Info">No sessions found.</MudAlert>
+}
+else
+{
+    <MudGrid>
+        @foreach (var session in _sessions)
+        {
+            var myParticipation = _currentMemberId.HasValue
+                ? session.Participants.FirstOrDefault(p => p.MemberId == _currentMemberId.Value)
+                : null;
+
+            <MudItem xs="12" sm="6" md="4">
+                <MudCard Style="cursor:pointer" @onclick="@(() => Nav.NavigateTo($"/sessions/{session.Id}"))">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">@session.Title</MudText>
+                        </CardHeaderContent>
+                        <CardHeaderActions>
+                            <MudChip T="string" Color="@GetStatusColor(session.Status)" Size="Size.Small">
+                                @session.Status
+                            </MudChip>
+                        </CardHeaderActions>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mb-1">
+                            <MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" />
+                            <MudText Typo="Typo.body2">
+                                @session.Start.LocalDateTime.ToString("ddd, MMM d · HH:mm") — @session.End.LocalDateTime.ToString("HH:mm")
+                            </MudText>
+                        </MudStack>
+                        <MudText Typo="Typo.caption">
+                            Participants: @session.ConfirmedParticipantCount / @session.MaxCapacity
+                            @if (session.WaitlistCount > 0)
+                            {
+                                <text> (Waitlist: @session.WaitlistCount)</text>
+                            }
+                        </MudText>
+                    </MudCardContent>
+                    @if (session.Status == SessionStatus.Scheduled)
+                    {
+                        <MudCardActions @onclick:stopPropagation="true">
+                            @if (myParticipation is null || myParticipation.Status == ParticipationStatus.Canceled)
+                            {
+                                <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                                           OnClick="@(() => JoinSession(session.Id))">
+                                    Join
+                                </MudButton>
+                            }
+                            else if (myParticipation.Status == ParticipationStatus.Confirmed)
+                            {
+                                <MudChip T="string" Color="Color.Success" Size="Size.Small"
+                                         Icon="@Icons.Material.Filled.CheckCircle">
+                                    Confirmed
+                                </MudChip>
+                            }
+                            else if (myParticipation.Status == ParticipationStatus.Waitlisted)
+                            {
+                                <MudChip T="string" Color="Color.Warning" Size="Size.Small">
+                                    Waitlist #@myParticipation.WaitlistPosition
+                                </MudChip>
+                            }
+                            else if (myParticipation.Status == ParticipationStatus.PendingApproval)
+                            {
+                                <MudChip T="string" Color="Color.Warning" Size="Size.Small"
+                                         Icon="@Icons.Material.Filled.PendingActions">
+                                    Awaiting approval
+                                </MudChip>
+                            }
+                        </MudCardActions>
+                    }
+                </MudCard>
+            </MudItem>
+        }
+    </MudGrid>
+}
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState> AuthState { get; set; } = default!;
+
+    [Parameter] public Guid? RecurringTrainingId { get; set; }
+
+    private List<TrainingSessionResponse>? _sessions;
+    private string? _error;
+    private bool _loading = true;
+    private Guid? _currentMemberId;
+
+    private DateTime? _fromDate;
+    private DateTime? _toDate;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthState;
+        var memberIdClaim = authState.User.FindFirst("member_id")?.Value;
+        if (memberIdClaim is not null && Guid.TryParse(memberIdClaim, out var id))
+            _currentMemberId = id;
+
+        await LoadSessions();
+    }
+
+    private async Task LoadSessions()
+    {
+        _loading = true;
+        _error = null;
+
+        try
+        {
+            DateTimeOffset? from = _fromDate.HasValue ? new DateTimeOffset(_fromDate.Value, TimeSpan.Zero) : null;
+            DateTimeOffset? to = _toDate.HasValue ? new DateTimeOffset(_toDate.Value.AddDays(1), TimeSpan.Zero) : null;
+            var result = await SessionApi.GetAllAsync(
+                recurringTrainingId: RecurringTrainingId, from: from, to: to);
+            _sessions = result?.Items.ToList();
+        }
+        catch (AccessTokenNotAvailableException ex)
+        {
+            ex.Redirect();
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to load sessions: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OnFromDateChanged(DateTime? value)
+    {
+        _fromDate = value;
+        await LoadSessions();
+    }
+
+    private async Task OnToDateChanged(DateTime? value)
+    {
+        _toDate = value;
+        await LoadSessions();
+    }
+
+    private async Task JoinSession(Guid id)
+    {
+        try
+        {
+            var response = await SessionApi.JoinAsync(id);
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Joined session.", Severity.Success);
+                await LoadSessions();
+            }
+            else
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Failed to join: {body}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private static Color GetStatusColor(SessionStatus status) => status switch
+    {
+        SessionStatus.Scheduled => Color.Success,
+        SessionStatus.Canceled => Color.Error,
+        SessionStatus.Completed => Color.Info,
+        _ => Color.Default
+    };
+}

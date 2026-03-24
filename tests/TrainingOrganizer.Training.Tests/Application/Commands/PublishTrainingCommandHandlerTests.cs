@@ -9,6 +9,7 @@ using TrainingOrganizer.SharedKernel.Domain.ValueObjects;
 using TrainingOrganizer.Membership.Domain.ValueObjects;
 using TrainingOrganizer.Training.Domain.Enums;
 using TrainingOrganizer.Training.Domain.ValueObjects;
+using DomainTraining = TrainingOrganizer.Training.Domain.Training;
 
 namespace TrainingOrganizer.Training.Tests.Application.Commands;
 
@@ -26,11 +27,11 @@ public sealed class PublishTrainingCommandHandlerTests
         _handler = new PublishTrainingCommandHandler(_trainingRepository, _unitOfWork);
     }
 
-    private static Domain.Training.Training CreateDraftTraining()
+    private static DomainTraining CreateDraftTraining()
     {
         var trainerId = MemberId.Create();
         var createdBy = MemberId.Create();
-        return Domain.Training.Training.Create(
+        return DomainTraining.Create(
             new TrainingTitle("Draft Training"),
             new TrainingDescription("Description"),
             new TimeSlot(DateTimeOffset.UtcNow.AddDays(1), DateTimeOffset.UtcNow.AddDays(1).AddHours(1)),
@@ -62,7 +63,7 @@ public sealed class PublishTrainingCommandHandlerTests
     {
         // Arrange
         _trainingRepository.GetByIdAsync(Arg.Any<TrainingId>(), Arg.Any<CancellationToken>())
-            .Returns((Domain.Training.Training?)null);
+            .Returns((DomainTraining?)null);
 
         var command = new PublishTrainingCommand(Guid.NewGuid());
 

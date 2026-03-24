@@ -8,7 +8,9 @@ using TrainingOrganizer.SharedKernel.Domain.ValueObjects;
 using TrainingOrganizer.SharedKernel.Domain.Exceptions;
 using TrainingOrganizer.Membership.Domain.ValueObjects;
 using TrainingOrganizer.Training.Domain.Enums;
+using TrainingOrganizer.Training.Application.DTOs;
 using TrainingOrganizer.Training.Domain.ValueObjects;
+using TrainingOrganizer.Facility.Domain.ValueObjects;
 
 namespace TrainingOrganizer.Training.Application.Commands;
 
@@ -20,7 +22,8 @@ public sealed record CreateTrainingCommand(
     int MinCapacity,
     int MaxCapacity,
     Visibility Visibility,
-    List<Guid> TrainerIds) : IRequest<Result<Guid>>;
+    List<Guid> TrainerIds,
+    List<RoomRequirementDto> RoomRequirements) : IRequest<Result<Guid>>;
 
 public sealed class CreateTrainingCommandHandler : IRequestHandler<CreateTrainingCommand, Result<Guid>>
 {
@@ -53,6 +56,12 @@ public sealed class CreateTrainingCommandHandler : IRequestHandler<CreateTrainin
 
             var training = Domain.Training.Create(
                 title, description, timeSlot, capacity, request.Visibility, trainerIds, currentUserId);
+
+            foreach (var room in request.RoomRequirements)
+            {
+                training.AddRoomRequirement(
+                    new RoomRequirement(new RoomId(room.RoomId), new LocationId(room.LocationId)));
+            }
 
             await _trainingRepository.AddAsync(training, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);

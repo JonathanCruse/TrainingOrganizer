@@ -1,7 +1,7 @@
 using MediatR;
 using TrainingOrganizer.SharedKernel.Application;
-using TrainingOrganizer.Domain.Facility.ValueObjects;
-using TrainingOrganizer.Training.Domain.Services;
+using TrainingOrganizer.Facility.Domain.ValueObjects;
+using TrainingOrganizer.Facility.Domain.Services;
 using TrainingOrganizer.Training.Domain.Events;
 
 namespace TrainingOrganizer.Training.Application.EventHandlers;

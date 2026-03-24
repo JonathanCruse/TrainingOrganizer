@@ -5,8 +5,7 @@ public sealed record ApplySessionOverridesRequest(
     string? Description,
     int? MinCapacity,
     int? MaxCapacity,
-    string? Visibility,
-    List<Guid>? TrainerIds);
+    string? Visibility);
 
 public sealed record RecordSessionAttendanceRequest(List<AttendanceEntryRequest> Entries);
 

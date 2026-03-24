@@ -9,6 +9,7 @@ using TrainingOrganizer.SharedKernel.Domain.ValueObjects;
 using TrainingOrganizer.Membership.Domain.ValueObjects;
 using TrainingOrganizer.Training.Domain.Enums;
 using TrainingOrganizer.Training.Domain.ValueObjects;
+using DomainTraining = TrainingOrganizer.Training.Domain.Training;
 
 namespace TrainingOrganizer.Training.Tests.Application.Commands;
 
@@ -28,11 +29,11 @@ public sealed class JoinTrainingCommandHandlerTests
         _handler = new JoinTrainingCommandHandler(_trainingRepository, _currentUserService, _unitOfWork);
     }
 
-    private static Domain.Training.Training CreatePublishedTraining(int maxCapacity = 20)
+    private static DomainTraining CreatePublishedTraining(int maxCapacity = 20)
     {
         var trainerId = MemberId.Create();
         var createdBy = MemberId.Create();
-        var training = Domain.Training.Training.Create(
+        var training = DomainTraining.Create(
             new TrainingTitle("Test Training"),
             new TrainingDescription("Description"),
             new TimeSlot(DateTimeOffset.UtcNow.AddDays(1), DateTimeOffset.UtcNow.AddDays(1).AddHours(1)),
@@ -49,7 +50,7 @@ public sealed class JoinTrainingCommandHandlerTests
     {
         // Arrange
         var currentUserId = MemberId.Create();
-        _currentUserService.MemberId.Returns(currentUserId);
+        _currentUserService.MemberId.Returns(currentUserId.Value);
 
         var training = CreatePublishedTraining();
         _trainingRepository.GetByIdAsync(Arg.Any<TrainingId>(), Arg.Any<CancellationToken>())
@@ -69,10 +70,10 @@ public sealed class JoinTrainingCommandHandlerTests
     {
         // Arrange
         var currentUserId = MemberId.Create();
-        _currentUserService.MemberId.Returns(currentUserId);
+        _currentUserService.MemberId.Returns(currentUserId.Value);
 
         _trainingRepository.GetByIdAsync(Arg.Any<TrainingId>(), Arg.Any<CancellationToken>())
-            .Returns((Domain.Training.Training?)null);
+            .Returns((DomainTraining?)null);
 
         var command = new JoinTrainingCommand(Guid.NewGuid());
 
@@ -88,7 +89,7 @@ public sealed class JoinTrainingCommandHandlerTests
     {
         // Arrange: create a training with max capacity of 1, add one participant, then try adding another
         var currentUserId = MemberId.Create();
-        _currentUserService.MemberId.Returns(currentUserId);
+        _currentUserService.MemberId.Returns(currentUserId.Value);
 
         var training = CreatePublishedTraining(maxCapacity: 1);
         // Fill the capacity with one participant

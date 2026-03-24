@@ -31,7 +31,7 @@ public sealed class ApproveMemberCommandHandlerTests
     {
         // Arrange
         var approverId = MemberId.Create();
-        _currentUserService.MemberId.Returns(approverId);
+        _currentUserService.MemberId.Returns(approverId.Value);
 
         var member = Member.Register(
             new ExternalIdentity("keycloak", "sub-1"),
@@ -55,7 +55,7 @@ public sealed class ApproveMemberCommandHandlerTests
     {
         // Arrange
         var approverId = MemberId.Create();
-        _currentUserService.MemberId.Returns(approverId);
+        _currentUserService.MemberId.Returns(approverId.Value);
 
         _memberRepository.GetByIdAsync(Arg.Any<MemberId>(), Arg.Any<CancellationToken>())
             .Returns((Member?)null);
@@ -74,7 +74,7 @@ public sealed class ApproveMemberCommandHandlerTests
     {
         // Arrange
         var approverId = MemberId.Create();
-        _currentUserService.MemberId.Returns(approverId);
+        _currentUserService.MemberId.Returns(approverId.Value);
 
         var member = Member.Register(
             new ExternalIdentity("keycloak", "sub-2"),

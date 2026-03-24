@@ -14,7 +14,10 @@
       "Bash(curl:*)",
       "Bash(dotnet clean:*)",
       "Bash(cd:*)",
-      "WebFetch(domain:easyverein.com)"
+      "WebFetch(domain:easyverein.com)",
+      "Bash(dotnet list:*)",
+      "Bash(dotnet tool:*)",
+      "Bash(dotnet exec:*)"
     ]
   }
 }

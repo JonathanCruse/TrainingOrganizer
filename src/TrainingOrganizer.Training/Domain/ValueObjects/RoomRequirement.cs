@@ -1,5 +1,5 @@
 using TrainingOrganizer.SharedKernel.Domain;
-using TrainingOrganizer.Domain.Facility.ValueObjects;
+using TrainingOrganizer.Facility.Domain.ValueObjects;
 
 namespace TrainingOrganizer.Training.Domain.ValueObjects;
 

@@ -2,7 +2,7 @@ using MediatR;
 using TrainingOrganizer.Api.Contracts;
 using TrainingOrganizer.Api.Extensions;
 using TrainingOrganizer.Training.Application.Commands;
-using TrainingOrganizer.Application.Training.DTOs;
+using TrainingOrganizer.Training.Application.DTOs;
 using TrainingOrganizer.Training.Application.Queries;
 using TrainingOrganizer.Training.Domain.Enums;
 
@@ -30,10 +30,13 @@ public static class RecurringTrainingEndpoints
     {
         var visibility = Enum.Parse<Visibility>(request.Visibility, ignoreCase: true);
         var pattern = Enum.Parse<RecurrencePattern>(request.Pattern, ignoreCase: true);
+        var roomRequirements = request.RoomRequirements
+            .Select(r => new RoomRequirementDto(r.RoomId, r.LocationId))
+            .ToList();
         var command = new CreateRecurringTrainingCommand(
             request.Title, request.Description,
             request.MinCapacity, request.MaxCapacity,
-            visibility, request.TrainerIds, [],
+            visibility, request.TrainerIds, roomRequirements,
             pattern, request.DayOfWeek,
             request.TimeOfDay, request.Duration,
             request.StartDate, request.EndDate);

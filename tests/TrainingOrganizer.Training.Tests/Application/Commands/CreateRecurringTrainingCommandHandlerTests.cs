@@ -3,7 +3,7 @@ using NSubstitute;
 using TrainingOrganizer.SharedKernel.Application.Interfaces;
 using TrainingOrganizer.SharedKernel.Application.Models;
 using TrainingOrganizer.Training.Application.Commands;
-using TrainingOrganizer.Application.Training.DTOs;
+using TrainingOrganizer.Training.Application.DTOs;
 using TrainingOrganizer.Training.Application.Repositories;
 using TrainingOrganizer.Membership.Domain.ValueObjects;
 using TrainingOrganizer.Training.Domain;
@@ -32,7 +32,7 @@ public sealed class CreateRecurringTrainingCommandHandlerTests
     {
         // Arrange
         var currentUserId = MemberId.Create();
-        _currentUserService.MemberId.Returns(currentUserId);
+        _currentUserService.MemberId.Returns(currentUserId.Value);
 
         var trainerId = Guid.NewGuid();
         var roomId = Guid.NewGuid();
@@ -66,7 +66,7 @@ public sealed class CreateRecurringTrainingCommandHandlerTests
     {
         // Arrange
         var currentUserId = MemberId.Create();
-        _currentUserService.MemberId.Returns(currentUserId);
+        _currentUserService.MemberId.Returns(currentUserId.Value);
 
         var trainerId = Guid.NewGuid();
         var command = new CreateRecurringTrainingCommand(
@@ -97,7 +97,7 @@ public sealed class CreateRecurringTrainingCommandHandlerTests
     {
         // Arrange
         var currentUserId = MemberId.Create();
-        _currentUserService.MemberId.Returns(currentUserId);
+        _currentUserService.MemberId.Returns(currentUserId.Value);
 
         var command = new CreateRecurringTrainingCommand(
             "Weekly Yoga",

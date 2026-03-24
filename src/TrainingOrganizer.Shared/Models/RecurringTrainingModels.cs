@@ -29,6 +29,7 @@ public sealed record CreateRecurringTrainingRequest(
     int MaxCapacity,
     string Visibility,
     List<Guid> TrainerIds,
+    List<RoomRequirementRequest> RoomRequirements,
     string Pattern,
     DayOfWeek DayOfWeek,
     string TimeOfDay,

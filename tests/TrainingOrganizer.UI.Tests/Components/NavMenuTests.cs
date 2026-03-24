@@ -18,6 +18,7 @@ public sealed class NavMenuTests : BunitTestBase
         cut.Markup.Should().Contain("Home");
         cut.Markup.Should().Contain("My Schedule");
         cut.Markup.Should().Contain("Trainings");
+        cut.Markup.Should().Contain("Sessions");
         cut.Markup.Should().NotContain("/members");
         cut.Markup.Should().NotContain("/locations");
     }
@@ -33,6 +34,7 @@ public sealed class NavMenuTests : BunitTestBase
 
         cut.Markup.Should().Contain("Home");
         cut.Markup.Should().Contain("Trainings");
+        cut.Markup.Should().Contain("Sessions");
         cut.Markup.Should().NotContain("/members");
         cut.Markup.Should().NotContain("/locations");
     }

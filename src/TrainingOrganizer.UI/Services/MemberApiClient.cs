@@ -11,6 +11,12 @@ public sealed class MemberApiClient(HttpClient http)
     public async Task<List<MemberResponse>> GetTrainersAsync()
         => await http.GetFromJsonAsync<List<MemberResponse>>("api/v1/members/trainers") ?? [];
 
+    public async Task<MemberResponse?> GetCurrentMemberAsync()
+        => await http.GetFromJsonAsync<MemberResponse>("api/v1/members/me");
+
+    public async Task<PagedResponse<MemberResponse>?> GetPendingAsync(int page = 1, int pageSize = 20)
+        => await http.GetFromJsonAsync<PagedResponse<MemberResponse>>($"api/v1/members/pending?page={page}&pageSize={pageSize}");
+
     public async Task<MemberResponse?> GetByIdAsync(Guid id)
         => await http.GetFromJsonAsync<MemberResponse>($"api/v1/members/{id}");
 

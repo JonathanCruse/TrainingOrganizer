@@ -2,8 +2,8 @@ using MediatR;
 using TrainingOrganizer.SharedKernel.Application;
 using TrainingOrganizer.SharedKernel.Application.Interfaces;
 using TrainingOrganizer.Training.Application.Repositories;
-using TrainingOrganizer.Domain.Facility.ValueObjects;
-using TrainingOrganizer.Training.Domain.Services;
+using TrainingOrganizer.Facility.Domain.ValueObjects;
+using TrainingOrganizer.Facility.Domain.Services;
 using TrainingOrganizer.Training.Domain.Events;
 using TrainingOrganizer.Training.Domain.ValueObjects;
 

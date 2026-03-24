@@ -1,0 +1,114 @@
+@inject FacilityApiClient FacilityApi
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Reschedule Booking</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="_isValid">
+            <MudDatePicker @bind-Date="_date" Label="Date" Required="true"
+                           RequiredError="Date is required" Class="mb-3" />
+            <MudTimePicker @bind-Time="_startTime" Label="Start Time" Required="true"
+                           RequiredError="Start time is required" Class="mb-3" />
+            <MudTimePicker @bind-Time="_endTime" Label="End Time" Required="true"
+                           RequiredError="End time is required" Class="mb-3" />
+        </MudForm>
+        @if (_conflictWarning is not null)
+        {
+            <MudAlert Severity="Severity.Warning" Class="mt-3">@_conflictWarning</MudAlert>
+        }
+        @if (_error is not null)
+        {
+            <MudAlert Severity="Severity.Error" Class="mt-3">@_error</MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit"
+                   Disabled="@(!_isValid || _submitting)">
+            @if (_submitting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            Reschedule
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter]
+    public required BookingResponse Booking { get; set; }
+
+    private MudForm _form = default!;
+    private bool _isValid;
+    private bool _submitting;
+    private string? _error;
+    private string? _conflictWarning;
+
+    private DateTime? _date;
+    private TimeSpan? _startTime;
+    private TimeSpan? _endTime;
+
+    protected override void OnInitialized()
+    {
+        _date = Booking.Start.LocalDateTime.Date;
+        _startTime = Booking.Start.LocalDateTime.TimeOfDay;
+        _endTime = Booking.End.LocalDateTime.TimeOfDay;
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task Submit()
+    {
+        await _form.ValidateAsync();
+        if (!_isValid) return;
+
+        _submitting = true;
+        _error = null;
+        _conflictWarning = null;
+
+        try
+        {
+            var offset = TimeZoneInfo.Local.GetUtcOffset(DateTime.Now);
+            var start = new DateTimeOffset(_date!.Value.Add(_startTime!.Value), offset);
+            var end = new DateTimeOffset(_date!.Value.Add(_endTime!.Value), offset);
+
+            // Check availability for new time before submitting
+            try
+            {
+                var bookedSlots = await FacilityApi.GetRoomAvailabilityAsync(Booking.RoomId, start, end);
+                if (bookedSlots.Count > 0)
+                {
+                    _conflictWarning = "The room has existing bookings during the new time. Rescheduling may fail.";
+                }
+            }
+            catch
+            {
+                // Non-fatal availability check
+            }
+
+            var request = new RescheduleBookingRequest(start, end);
+            var response = await FacilityApi.RescheduleBookingAsync(Booking.Id, request);
+            if (response.IsSuccessStatusCode)
+            {
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            else
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                _error = $"Failed to reschedule booking: {body}";
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to reschedule booking: {ex.Message}";
+        }
+        finally
+        {
+            _submitting = false;
+        }
+    }
+}

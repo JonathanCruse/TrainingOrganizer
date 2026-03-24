@@ -24,9 +24,22 @@ public sealed class FacilityApiClient(HttpClient http)
     public async Task<HttpResponseMessage> UpdateRoomAsync(Guid locationId, Guid roomId, UpdateRoomRequest request)
         => await http.PutAsJsonAsync($"api/v1/locations/{locationId}/rooms/{roomId}", request);
 
+    public async Task<HttpResponseMessage> EnableRoomAsync(Guid locationId, Guid roomId)
+        => await http.PostAsync($"api/v1/locations/{locationId}/rooms/{roomId}/enable", null);
+
+    public async Task<HttpResponseMessage> DisableRoomAsync(Guid locationId, Guid roomId)
+        => await http.PostAsync($"api/v1/locations/{locationId}/rooms/{roomId}/disable", null);
+
     // Bookings
-    public async Task<PagedResponse<BookingResponse>?> GetBookingsAsync(int page = 1, int pageSize = 20)
-        => await http.GetFromJsonAsync<PagedResponse<BookingResponse>>($"api/v1/bookings?page={page}&pageSize={pageSize}");
+    public async Task<PagedResponse<BookingResponse>?> GetBookingsAsync(
+        int page = 1, int pageSize = 20, Guid? roomId = null, DateTimeOffset? from = null, DateTimeOffset? to = null)
+    {
+        var url = $"api/v1/bookings?page={page}&pageSize={pageSize}";
+        if (roomId.HasValue) url += $"&roomId={roomId.Value}";
+        if (from.HasValue) url += $"&from={from.Value:o}";
+        if (to.HasValue) url += $"&to={to.Value:o}";
+        return await http.GetFromJsonAsync<PagedResponse<BookingResponse>>(url);
+    }
 
     public async Task<HttpResponseMessage> CreateBookingAsync(CreateBookingRequest request)
         => await http.PostAsJsonAsync("api/v1/bookings", request);
@@ -36,4 +49,7 @@ public sealed class FacilityApiClient(HttpClient http)
 
     public async Task<HttpResponseMessage> CancelBookingAsync(Guid id)
         => await http.PostAsync($"api/v1/bookings/{id}/cancel", null);
+
+    public async Task<List<TimeSlotResponse>> GetRoomAvailabilityAsync(Guid roomId, DateTimeOffset from, DateTimeOffset to)
+        => await http.GetFromJsonAsync<List<TimeSlotResponse>>($"api/v1/bookings/rooms/{roomId}/availability?from={from:o}&to={to:o}") ?? [];
 }

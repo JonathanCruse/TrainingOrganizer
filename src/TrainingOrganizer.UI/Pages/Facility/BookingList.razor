@@ -1,0 +1,261 @@
+@page "/bookings"
+@attribute [Authorize(Roles = "Trainer,Admin")]
+@inject FacilityApiClient FacilityApi
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>Bookings</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+    <MudText Typo="Typo.h4">Room Bookings</MudText>
+    <AuthorizeView Roles="Admin">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="OpenCreateBookingDialog">
+            New Booking
+        </MudButton>
+    </AuthorizeView>
+</MudStack>
+
+<MudPaper Class="pa-4 mb-4" Elevation="1">
+    <MudGrid>
+        <MudItem xs="12" sm="4">
+            <MudSelect T="Guid?" Value="_selectedLocationId" Label="Location" Clearable="true"
+                       AnchorOrigin="Origin.BottomCenter" ValueChanged="OnLocationChanged">
+                @foreach (var loc in _locations)
+                {
+                    <MudSelectItem T="Guid?" Value="@((Guid?)loc.Id)">@loc.Name</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <MudSelect T="Guid?" Value="_selectedRoomId" Label="Room" Clearable="true"
+                       AnchorOrigin="Origin.BottomCenter" Disabled="@(!_selectedLocationId.HasValue)"
+                       ValueChanged="OnRoomChanged">
+                @foreach (var room in FilteredRooms)
+                {
+                    <MudSelectItem T="Guid?" Value="@((Guid?)room.Id)">@room.Name (Cap: @room.Capacity)</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="6" sm="2">
+            <MudDatePicker Date="_fromDate" Label="From" DateChanged="OnFromDateChanged" />
+        </MudItem>
+        <MudItem xs="6" sm="2">
+            <MudDatePicker Date="_toDate" Label="To" DateChanged="OnToDateChanged" />
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+@if (_loading)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else if (_error is not null)
+{
+    <MudAlert Severity="Severity.Error">@_error</MudAlert>
+}
+else if (_bookings is null || _bookings.Count == 0)
+{
+    <MudAlert Severity="Severity.Info">No bookings found for the selected filters.</MudAlert>
+}
+else
+{
+    <MudTable Items="_bookings" Dense="true" Hover="true" Bordered="true" Striped="true"
+              GroupBy="_groupDefinition" GroupHeaderStyle="background-color:var(--mud-palette-background-gray)">
+        <HeaderContent>
+            <MudTh>Time</MudTh>
+            <MudTh>Room</MudTh>
+            <MudTh>Reference</MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh>Actions</MudTh>
+        </HeaderContent>
+        <GroupHeaderTemplate>
+            <MudTh colspan="5" Class="py-2">
+                <MudText Typo="Typo.subtitle1"><b>@context.Key</b></MudText>
+            </MudTh>
+        </GroupHeaderTemplate>
+        <RowTemplate Context="booking">
+            <MudTd DataLabel="Time">
+                @booking.Start.LocalDateTime.ToString("HH:mm") &ndash; @booking.End.LocalDateTime.ToString("HH:mm")
+            </MudTd>
+            <MudTd DataLabel="Room">@GetRoomDisplayName(booking.RoomId, booking.LocationId)</MudTd>
+            <MudTd DataLabel="Reference">
+                <MudChip T="string" Size="Size.Small"
+                         Color="@(booking.ReferenceType == BookingReferenceType.Manual ? Color.Default : Color.Info)">
+                    @booking.ReferenceType
+                </MudChip>
+            </MudTd>
+            <MudTd DataLabel="Status">
+                <MudChip T="string" Size="Size.Small"
+                         Color="@(booking.Status == BookingStatus.Active ? Color.Success : Color.Default)">
+                    @booking.Status
+                </MudChip>
+            </MudTd>
+            <MudTd DataLabel="Actions">
+                @if (booking.Status == BookingStatus.Active && _isAdmin)
+                {
+                    <MudIconButton Icon="@Icons.Material.Filled.Schedule" Size="Size.Small"
+                                   Color="Color.Primary" Title="Reschedule"
+                                   OnClick="@(() => OpenRescheduleDialog(booking))" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Cancel" Size="Size.Small"
+                                   Color="Color.Error" Title="Cancel"
+                                   OnClick="@(() => CancelBooking(booking.Id))" />
+                }
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+}
+
+@code {
+    private List<LocationResponse> _locations = [];
+    private List<BookingResponse>? _bookings;
+    private string? _error;
+    private bool _loading = true;
+    private bool _isAdmin;
+
+    private Guid? _selectedLocationId;
+    private Guid? _selectedRoomId;
+    private DateTime? _fromDate = DateTime.Today;
+    private DateTime? _toDate = DateTime.Today.AddDays(7);
+
+    private IEnumerable<RoomResponse> FilteredRooms =>
+        _locations.FirstOrDefault(l => l.Id == _selectedLocationId)?.Rooms
+            .Where(r => r.Status == RoomStatus.Enabled) ?? [];
+
+    private readonly TableGroupDefinition<BookingResponse> _groupDefinition = new()
+    {
+        GroupName = "Date",
+        Selector = b => b.Start.LocalDateTime.ToString("dddd, dd MMM yyyy")
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        _isAdmin = authState.User.IsInRole("Admin");
+
+        try
+        {
+            var locationsPage = await FacilityApi.GetAllLocationsAsync(1, 100);
+            _locations = locationsPage?.Items?.ToList() ?? [];
+        }
+        catch
+        {
+            // Non-fatal
+        }
+
+        await LoadBookings();
+    }
+
+    private async Task LoadBookings()
+    {
+        _loading = true;
+        _error = null;
+
+        try
+        {
+            DateTimeOffset? from = _fromDate.HasValue
+                ? new DateTimeOffset(_fromDate.Value, TimeZoneInfo.Local.GetUtcOffset(DateTime.Now))
+                : null;
+            DateTimeOffset? to = _toDate.HasValue
+                ? new DateTimeOffset(_toDate.Value.AddDays(1).AddTicks(-1), TimeZoneInfo.Local.GetUtcOffset(DateTime.Now))
+                : null;
+
+            var result = await FacilityApi.GetBookingsAsync(1, 100, _selectedRoomId, from, to);
+            _bookings = result?.Items?.ToList();
+        }
+        catch (AccessTokenNotAvailableException ex)
+        {
+            ex.Redirect();
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to load bookings: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private string GetRoomDisplayName(Guid roomId, Guid locationId)
+    {
+        var location = _locations.FirstOrDefault(l => l.Id == locationId);
+        if (location is null) return roomId.ToString()[..8];
+        var room = location.Rooms.FirstOrDefault(r => r.Id == roomId);
+        return room is not null ? $"{location.Name} — {room.Name}" : $"{location.Name} — {roomId.ToString()[..8]}";
+    }
+
+    private async Task OnLocationChanged(Guid? locationId)
+    {
+        _selectedLocationId = locationId;
+        _selectedRoomId = null;
+        await LoadBookings();
+    }
+
+    private async Task OnRoomChanged(Guid? roomId)
+    {
+        _selectedRoomId = roomId;
+        await LoadBookings();
+    }
+
+    private async Task OnFromDateChanged(DateTime? date)
+    {
+        _fromDate = date;
+        await LoadBookings();
+    }
+
+    private async Task OnToDateChanged(DateTime? date)
+    {
+        _toDate = date;
+        await LoadBookings();
+    }
+
+    private async Task OpenCreateBookingDialog()
+    {
+        var parameters = new DialogParameters<CreateBookingDialog> { { x => x.Locations, _locations } };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<CreateBookingDialog>(string.Empty, parameters, options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled)
+        {
+            await LoadBookings();
+        }
+    }
+
+    private async Task OpenRescheduleDialog(BookingResponse booking)
+    {
+        var parameters = new DialogParameters<RescheduleBookingDialog> { { x => x.Booking, booking } };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<RescheduleBookingDialog>(string.Empty, parameters, options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled)
+        {
+            await LoadBookings();
+        }
+    }
+
+    private async Task CancelBooking(Guid bookingId)
+    {
+        try
+        {
+            var response = await FacilityApi.CancelBookingAsync(bookingId);
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Booking canceled.", Severity.Success);
+                await LoadBookings();
+            }
+            else
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Failed to cancel: {body}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to cancel: {ex.Message}", Severity.Error);
+        }
+    }
+}

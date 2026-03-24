@@ -5,18 +5,23 @@ using TrainingOrganizer.Facility.Domain;
 using TrainingOrganizer.Facility.Domain.Enums;
 using TrainingOrganizer.Facility.Domain.Events;
 using TrainingOrganizer.Facility.Domain.ValueObjects;
-using TrainingOrganizer.Domain.Tests.TestHelpers;
 
 namespace TrainingOrganizer.Facility.Tests.Domain;
 
 public class BookingTests
 {
+    private static TimeSlot CreateTimeSlot()
+    {
+        var start = DateTimeOffset.UtcNow.AddDays(7);
+        return new TimeSlot(start, start.AddHours(2));
+    }
+
     private static Booking CreateActiveBooking()
     {
         var booking = Booking.Create(
             RoomId.Create(),
             LocationId.Create(),
-            TrainingFactory.CreateTimeSlot(),
+            CreateTimeSlot(),
             new BookingReference(BookingReferenceType.Training, Guid.NewGuid()),
             Guid.NewGuid());
         booking.ClearDomainEvents();
@@ -30,7 +35,7 @@ public class BookingTests
     {
         var roomId = RoomId.Create();
         var locationId = LocationId.Create();
-        var timeSlot = TrainingFactory.CreateTimeSlot();
+        var timeSlot = CreateTimeSlot();
         var reference = new BookingReference(BookingReferenceType.Training, Guid.NewGuid());
         var createdBy = Guid.NewGuid();
 
@@ -51,7 +56,7 @@ public class BookingTests
         var booking = Booking.Create(
             RoomId.Create(),
             LocationId.Create(),
-            TrainingFactory.CreateTimeSlot(),
+            CreateTimeSlot(),
             new BookingReference(BookingReferenceType.Manual, Guid.NewGuid()),
             Guid.NewGuid());
 

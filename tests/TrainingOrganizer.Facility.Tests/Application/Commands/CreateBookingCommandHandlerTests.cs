@@ -7,7 +7,6 @@ using TrainingOrganizer.Facility.Application.Repositories;
 using TrainingOrganizer.SharedKernel.Domain.ValueObjects;
 using TrainingOrganizer.Facility.Domain;
 using TrainingOrganizer.Facility.Domain.ValueObjects;
-using TrainingOrganizer.Domain.Membership.ValueObjects;
 using TrainingOrganizer.Facility.Domain.Services;
 
 namespace TrainingOrganizer.Facility.Tests.Application.Commands;
@@ -34,7 +33,7 @@ public sealed class CreateBookingCommandHandlerTests
     public async Task Handle_NoConflict_ReturnsSuccessWithBookingId()
     {
         // Arrange
-        var currentUserId = MemberId.Create();
+        var currentUserId = Guid.NewGuid();
         _currentUserService.MemberId.Returns(currentUserId);
 
         _roomBookingService.HasConflictAsync(
@@ -65,7 +64,7 @@ public sealed class CreateBookingCommandHandlerTests
     public async Task Handle_WithConflict_ReturnsFailure()
     {
         // Arrange
-        var currentUserId = MemberId.Create();
+        var currentUserId = Guid.NewGuid();
         _currentUserService.MemberId.Returns(currentUserId);
 
         _roomBookingService.HasConflictAsync(

@@ -29,6 +29,7 @@ public sealed record ParticipantResponse(
     bool Attended);
 
 public sealed record RoomRequirementResponse(Guid RoomId, Guid LocationId);
+public sealed record RoomRequirementRequest(Guid RoomId, Guid LocationId);
 
 public sealed record CreateTrainingRequest(
     string Title,
@@ -38,7 +39,8 @@ public sealed record CreateTrainingRequest(
     int MinCapacity,
     int MaxCapacity,
     string Visibility,
-    List<Guid> TrainerIds);
+    List<Guid> TrainerIds,
+    List<RoomRequirementRequest> RoomRequirements);
 
 public sealed record UpdateTrainingRequest(
     string Title,

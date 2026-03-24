@@ -62,7 +62,7 @@ public sealed class MemberApiClientTests
     {
         _handler.RespondWith("/api/v1/members/register", HttpStatusCode.Created);
 
-        var request = new RegisterMemberRequest("keycloak", "sub-123", "John", "Doe", "john@test.com");
+        var request = new RegisterMemberRequest("John", "Doe", "john@test.com");
         var result = await _sut.RegisterAsync(request);
 
         result.StatusCode.Should().Be(HttpStatusCode.Created);

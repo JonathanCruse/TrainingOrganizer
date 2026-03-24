@@ -10,6 +10,7 @@ public static class DependencyInjection
         services.AddScoped<TrainingApiClient>();
         services.AddScoped<RecurringTrainingApiClient>();
         services.AddScoped<FacilityApiClient>();
+        services.AddScoped<SessionApiClient>();
         services.AddScoped<ScheduleApiClient>();
         return services;
     }

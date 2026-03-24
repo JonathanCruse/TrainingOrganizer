@@ -1,0 +1,575 @@
+@page "/sessions/{Id:guid}"
+@attribute [Authorize]
+@inject SessionApiClient SessionApi
+@inject MemberApiClient MemberApi
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+
+<PageTitle>@(_session?.Title ?? "Session")</PageTitle>
+
+@if (_loading)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else if (_error is not null)
+{
+    <MudAlert Severity="Severity.Error">@_error</MudAlert>
+}
+else if (_session is null)
+{
+    <MudAlert Severity="Severity.Warning">Session not found.</MudAlert>
+}
+else
+{
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+        <MudButton StartIcon="@Icons.Material.Filled.ArrowBack" Variant="Variant.Text"
+                   OnClick="NavigateBack">
+            Back
+        </MudButton>
+        <AuthorizeView Roles="Trainer,Admin">
+            <MudStack Row="true" Spacing="1">
+                @if (_session.Status == SessionStatus.Scheduled)
+                {
+                    <MudButton Variant="Variant.Outlined" Color="Color.Success" Size="Size.Small"
+                               OnClick="CompleteSession" Disabled="_actioning">
+                        Complete
+                    </MudButton>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small"
+                               OnClick="OpenCancelDialog" Disabled="_actioning">
+                        Cancel
+                    </MudButton>
+                }
+            </MudStack>
+        </AuthorizeView>
+    </MudStack>
+
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
+        <MudText Typo="Typo.h4">@_session.Title</MudText>
+        <MudChip T="string" Color="@GetStatusColor(_session.Status)" Size="Size.Small">@_session.Status</MudChip>
+        <MudChip T="string" Color="Color.Default" Size="Size.Small">@_session.Visibility</MudChip>
+        @if (_session.HasOverrides)
+        {
+            <MudChip T="string" Color="Color.Info" Size="Size.Small">Overridden</MudChip>
+        }
+    </MudStack>
+
+    <MudStack Row="true" Spacing="4" Class="mb-2">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+            <MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" />
+            <MudText Typo="Typo.body2">
+                @_session.Start.LocalDateTime.ToString("ddd, MMM d · HH:mm") — @_session.End.LocalDateTime.ToString("HH:mm")
+            </MudText>
+        </MudStack>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+            <MudIcon Icon="@Icons.Material.Filled.Group" Size="Size.Small" />
+            <MudText Typo="Typo.body2">
+                @_session.ConfirmedParticipantCount / @_session.MaxCapacity confirmed
+                @if (_session.WaitlistCount > 0)
+                {
+                    <text> · @_session.WaitlistCount on waitlist</text>
+                }
+                @if (_pendingCount > 0)
+                {
+                    <MudChip T="string" Color="Color.Warning" Size="Size.Small" Class="ml-1">
+                        @_pendingCount pending
+                    </MudChip>
+                }
+            </MudText>
+        </MudStack>
+    </MudStack>
+
+    @if (!string.IsNullOrWhiteSpace(_session.Description))
+    {
+        <MudText Typo="Typo.body1" Class="mb-4">@_session.Description</MudText>
+    }
+
+    @* Join / Leave / Status for current user *@
+    @if (_session.Status == SessionStatus.Scheduled)
+    {
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-4">
+            @if (_myParticipation is null || _myParticipation.Status == ParticipationStatus.Canceled)
+            {
+                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.PersonAdd"
+                           OnClick="JoinSession" Disabled="_actioning">
+                    Join Session
+                </MudButton>
+            }
+            else if (_myParticipation.Status == ParticipationStatus.Confirmed)
+            {
+                <MudChip T="string" Color="Color.Success" Icon="@Icons.Material.Filled.CheckCircle">
+                    You are confirmed
+                </MudChip>
+                <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small"
+                           OnClick="LeaveSession" Disabled="_actioning">
+                    Leave
+                </MudButton>
+            }
+            else if (_myParticipation.Status == ParticipationStatus.Waitlisted)
+            {
+                <MudChip T="string" Color="Color.Warning" Icon="@Icons.Material.Filled.HourglassTop">
+                    Waitlist position @_myParticipation.WaitlistPosition
+                </MudChip>
+                <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small"
+                           OnClick="LeaveSession" Disabled="_actioning">
+                    Leave Waitlist
+                </MudButton>
+            }
+            else if (_myParticipation.Status == ParticipationStatus.PendingApproval)
+            {
+                <MudChip T="string" Color="Color.Warning" Icon="@Icons.Material.Filled.PendingActions">
+                    Awaiting approval
+                </MudChip>
+            }
+        </MudStack>
+    }
+
+    @* Pending approval — Admin/Trainer only *@
+    <AuthorizeView Roles="Trainer,Admin">
+        @if (_pendingParticipants.Count > 0)
+        {
+            <MudText Typo="Typo.h6" Class="mb-2">
+                Pending Approval
+                <MudChip T="string" Color="Color.Warning" Size="Size.Small">@_pendingParticipants.Count</MudChip>
+            </MudText>
+            <MudTable Items="_pendingParticipants" Hover="true" Dense="true" Class="mb-4">
+                <HeaderContent>
+                    <MudTh>Member</MudTh>
+                    <MudTh>Requested</MudTh>
+                    <MudTh>Actions</MudTh>
+                </HeaderContent>
+                <RowTemplate Context="p">
+                    <MudTd DataLabel="Member">@GetMemberName(p.MemberId)</MudTd>
+                    <MudTd DataLabel="Requested">@p.JoinedAt.LocalDateTime.ToString("g")</MudTd>
+                    <MudTd DataLabel="Actions">
+                        <MudIconButton Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success"
+                                       Size="Size.Small" title="Accept"
+                                       OnClick="@(() => AcceptParticipant(p.MemberId))"
+                                       Disabled="_actioning" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Cancel" Color="Color.Error"
+                                       Size="Size.Small" title="Reject"
+                                       OnClick="@(() => RejectParticipant(p.MemberId))"
+                                       Disabled="_actioning" />
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </AuthorizeView>
+
+    @* Attendance recording — Trainer/Admin only, Scheduled or Completed *@
+    <AuthorizeView Roles="Trainer,Admin">
+        @if (_confirmedParticipants.Count > 0
+             && (_session.Status == SessionStatus.Scheduled || _session.Status == SessionStatus.Completed))
+        {
+            <MudText Typo="Typo.h6" Class="mb-2">
+                Attendance (@_confirmedParticipants.Count)
+            </MudText>
+            <MudTable Items="_confirmedParticipants" Hover="true" Dense="true" Class="mb-4">
+                <HeaderContent>
+                    <MudTh>Participant</MudTh>
+                    <MudTh>Attended</MudTh>
+                </HeaderContent>
+                <RowTemplate Context="p">
+                    <MudTd DataLabel="Participant">@GetMemberName(p.MemberId)</MudTd>
+                    <MudTd DataLabel="Attended">
+                        <MudCheckBox T="bool" Value="@GetAttendance(p.MemberId)"
+                                     ValueChanged="@(v => SetAttendance(p.MemberId, v))"
+                                     Dense="true" Color="Color.Success"
+                                     Class="attendance-checkbox" />
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Save"
+                       OnClick="SaveAttendance" Disabled="_actioning"
+                       Class="mb-4">
+                Save Attendance
+            </MudButton>
+        }
+    </AuthorizeView>
+
+    @* Confirmed participants — shown to non-trainers *@
+    <AuthorizeView Roles="Trainer,Admin">
+        <NotAuthorized>
+            @if (_confirmedParticipants.Count > 0)
+            {
+                <MudText Typo="Typo.h6" Class="mb-2">Confirmed (@_confirmedParticipants.Count)</MudText>
+                <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1" Class="mb-4">
+                    @foreach (var p in _confirmedParticipants)
+                    {
+                        <MudChip T="string" Color="@(p.AttendanceRecorded && p.Attended ? Color.Success : p.AttendanceRecorded ? Color.Default : Color.Success)" Size="Size.Small">
+                            @GetMemberName(p.MemberId)
+                            @if (p.AttendanceRecorded)
+                            {
+                                <text> — @(p.Attended ? "Attended" : "Absent")</text>
+                            }
+                        </MudChip>
+                    }
+                </MudStack>
+            }
+        </NotAuthorized>
+    </AuthorizeView>
+
+    @* Member's own attendance status *@
+    @if (_myParticipation is not null && _myParticipation.AttendanceRecorded
+         && (_session.Status == SessionStatus.Scheduled || _session.Status == SessionStatus.Completed))
+    {
+        <MudAlert Severity="@(_myParticipation.Attended ? Severity.Success : Severity.Info)" Class="mb-4">
+            @(_myParticipation.Attended ? "You attended this session." : "You did not attend this session.")
+        </MudAlert>
+    }
+
+    @* Waitlisted participants *@
+    @if (_waitlistedParticipants.Count > 0)
+    {
+        <MudText Typo="Typo.h6" Class="mb-2">Waitlist (@_waitlistedParticipants.Count)</MudText>
+        <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1" Class="mb-4">
+            @foreach (var p in _waitlistedParticipants.OrderBy(p => p.WaitlistPosition))
+            {
+                <MudChip T="string" Color="Color.Warning" Size="Size.Small">
+                    #@p.WaitlistPosition @GetMemberName(p.MemberId)
+                </MudChip>
+            }
+        </MudStack>
+    }
+}
+
+@* Cancel dialog *@
+<MudDialog @bind-Visible="_cancelDialogVisible" Options="@(new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true })">
+    <TitleContent>Cancel Session</TitleContent>
+    <DialogContent>
+        <MudTextField @bind-Value="_cancelReason" Label="Reason" Variant="Variant.Outlined"
+                      Lines="3" Required="true" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _cancelDialogVisible = false)">Cancel</MudButton>
+        <MudButton Color="Color.Error" Variant="Variant.Filled"
+                   OnClick="ConfirmCancel" Disabled="@(string.IsNullOrWhiteSpace(_cancelReason) || _actioning)">
+            Confirm Cancel
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState> AuthState { get; set; } = default!;
+
+    [Parameter] public Guid Id { get; set; }
+
+    private TrainingSessionResponse? _session;
+    private bool _loading = true;
+    private bool _actioning;
+    private string? _error;
+
+    private Guid? _currentMemberId;
+    private bool _isTrainerOrAdmin;
+    private ParticipantResponse? _myParticipation;
+
+    private List<ParticipantResponse> _pendingParticipants = [];
+    private List<ParticipantResponse> _confirmedParticipants = [];
+    private List<ParticipantResponse> _waitlistedParticipants = [];
+    private int _pendingCount;
+
+    private Dictionary<Guid, string> _memberNames = [];
+    private Dictionary<Guid, bool> _attendanceState = [];
+
+    private bool _cancelDialogVisible;
+    private string? _cancelReason;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthState;
+        var memberIdClaim = authState.User.FindFirst("member_id")?.Value;
+        if (memberIdClaim is not null && Guid.TryParse(memberIdClaim, out var id))
+            _currentMemberId = id;
+
+        _isTrainerOrAdmin = authState.User.IsInRole("Trainer") || authState.User.IsInRole("Admin");
+
+        await LoadSession();
+
+        if (_isTrainerOrAdmin)
+            await LoadMemberNames();
+    }
+
+    private async Task LoadSession()
+    {
+        _loading = true;
+        _error = null;
+
+        try
+        {
+            _session = await SessionApi.GetByIdAsync(Id);
+            UpdateParticipantLists();
+        }
+        catch (AccessTokenNotAvailableException ex)
+        {
+            ex.Redirect();
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to load session: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void UpdateParticipantLists()
+    {
+        if (_session is null) return;
+
+        _myParticipation = _currentMemberId.HasValue
+            ? _session.Participants.FirstOrDefault(p => p.MemberId == _currentMemberId.Value)
+            : null;
+
+        _pendingParticipants = _session.Participants
+            .Where(p => p.Status == ParticipationStatus.PendingApproval).ToList();
+        _confirmedParticipants = _session.Participants
+            .Where(p => p.Status == ParticipationStatus.Confirmed).ToList();
+        _waitlistedParticipants = _session.Participants
+            .Where(p => p.Status == ParticipationStatus.Waitlisted).ToList();
+        _pendingCount = _pendingParticipants.Count;
+
+        _attendanceState = _confirmedParticipants
+            .ToDictionary(p => p.MemberId, p => p.AttendanceRecorded && p.Attended);
+    }
+
+    private async Task LoadMemberNames()
+    {
+        try
+        {
+            var result = await MemberApi.GetAllAsync(1, 200);
+            if (result?.Items is not null)
+                _memberNames = result.Items.ToDictionary(m => m.Id, m => $"{m.FirstName} {m.LastName}");
+        }
+        catch
+        {
+            // Non-fatal — fall back to IDs
+        }
+    }
+
+    private string GetMemberName(Guid memberId)
+        => _memberNames.TryGetValue(memberId, out var name) ? name : memberId.ToString()[..8] + "...";
+
+    private void NavigateBack()
+    {
+        if (_session is not null)
+            Nav.NavigateTo($"/sessions/recurring/{_session.RecurringTrainingId}");
+        else
+            Nav.NavigateTo("/sessions");
+    }
+
+    private async Task JoinSession()
+    {
+        _actioning = true;
+        try
+        {
+            var response = await SessionApi.JoinAsync(Id);
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Joined session.", Severity.Success);
+                await LoadSession();
+            }
+            else
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Failed to join: {body}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _actioning = false;
+        }
+    }
+
+    private async Task LeaveSession()
+    {
+        _actioning = true;
+        try
+        {
+            var response = await SessionApi.LeaveAsync(Id);
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Left session.", Severity.Info);
+                await LoadSession();
+            }
+            else
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Failed to leave: {body}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _actioning = false;
+        }
+    }
+
+    private async Task AcceptParticipant(Guid memberId)
+    {
+        _actioning = true;
+        try
+        {
+            var response = await SessionApi.AcceptParticipantAsync(Id, memberId);
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Participant accepted.", Severity.Success);
+                await LoadSession();
+            }
+            else
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Failed to accept: {body}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _actioning = false;
+        }
+    }
+
+    private async Task RejectParticipant(Guid memberId)
+    {
+        _actioning = true;
+        try
+        {
+            var response = await SessionApi.RejectParticipantAsync(Id, memberId);
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Participant rejected.", Severity.Info);
+                await LoadSession();
+            }
+            else
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Failed to reject: {body}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _actioning = false;
+        }
+    }
+
+    private void OpenCancelDialog()
+    {
+        _cancelReason = null;
+        _cancelDialogVisible = true;
+    }
+
+    private async Task ConfirmCancel()
+    {
+        _actioning = true;
+        _cancelDialogVisible = false;
+        try
+        {
+            var response = await SessionApi.CancelAsync(Id, new CancelSessionRequest(_cancelReason!));
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Session canceled.", Severity.Warning);
+                await LoadSession();
+            }
+            else
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Failed to cancel: {body}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _actioning = false;
+        }
+    }
+
+    private async Task CompleteSession()
+    {
+        _actioning = true;
+        try
+        {
+            var response = await SessionApi.CompleteAsync(Id);
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Session completed.", Severity.Success);
+                await LoadSession();
+            }
+            else
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Failed to complete: {body}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _actioning = false;
+        }
+    }
+
+    private bool GetAttendance(Guid memberId)
+        => _attendanceState.TryGetValue(memberId, out var attended) && attended;
+
+    private void SetAttendance(Guid memberId, bool attended)
+        => _attendanceState[memberId] = attended;
+
+    private async Task SaveAttendance()
+    {
+        _actioning = true;
+        try
+        {
+            var entries = _attendanceState
+                .Select(kvp => new AttendanceEntryRequest(kvp.Key, kvp.Value))
+                .ToList();
+            var response = await SessionApi.RecordAttendanceAsync(
+                Id, new RecordSessionAttendanceRequest(entries));
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Attendance saved.", Severity.Success);
+                await LoadSession();
+            }
+            else
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Failed to save attendance: {body}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _actioning = false;
+        }
+    }
+
+    private static Color GetStatusColor(SessionStatus status) => status switch
+    {
+        SessionStatus.Scheduled => Color.Success,
+        SessionStatus.Canceled => Color.Error,
+        SessionStatus.Completed => Color.Info,
+        _ => Color.Default
+    };
+}

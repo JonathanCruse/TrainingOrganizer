@@ -6,7 +6,7 @@ using TrainingOrganizer.SharedKernel.Application.Models;
 using TrainingOrganizer.Training.Application.DTOs;
 using TrainingOrganizer.Training.Application.Repositories;
 using TrainingOrganizer.SharedKernel.Domain.Exceptions;
-using TrainingOrganizer.Domain.Facility.ValueObjects;
+using TrainingOrganizer.Facility.Domain.ValueObjects;
 using TrainingOrganizer.Membership.Domain.ValueObjects;
 using TrainingOrganizer.Training.Domain;
 using TrainingOrganizer.Training.Domain.Enums;

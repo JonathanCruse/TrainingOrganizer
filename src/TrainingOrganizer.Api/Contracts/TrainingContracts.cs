@@ -8,7 +8,8 @@ public sealed record CreateTrainingRequest(
     int MinCapacity,
     int MaxCapacity,
     string Visibility,
-    List<Guid> TrainerIds);
+    List<Guid> TrainerIds,
+    List<RoomRequirementRequest> RoomRequirements);
 
 public sealed record UpdateTrainingRequest(
     string Title,
