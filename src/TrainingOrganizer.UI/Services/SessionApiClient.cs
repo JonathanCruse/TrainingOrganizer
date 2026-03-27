@@ -7,11 +7,13 @@ public sealed class SessionApiClient(HttpClient http)
 {
     public async Task<PagedResponse<TrainingSessionResponse>?> GetAllAsync(
         int page = 1, int pageSize = 20, Guid? recurringTrainingId = null,
-        DateTimeOffset? from = null, DateTimeOffset? to = null)
+        string? status = null, DateTimeOffset? from = null, DateTimeOffset? to = null)
     {
         var url = $"api/v1/sessions?page={page}&pageSize={pageSize}";
         if (recurringTrainingId.HasValue)
             url += $"&recurringTrainingId={recurringTrainingId.Value}";
+        if (status is not null)
+            url += $"&status={Uri.EscapeDataString(status)}";
         if (from.HasValue)
             url += $"&from={from.Value:O}";
         if (to.HasValue)

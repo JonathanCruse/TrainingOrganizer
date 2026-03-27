@@ -19,12 +19,50 @@
     </MudStack>
 </MudStack>
 
-<MudStack Row="true" Spacing="2" Class="mb-4" AlignItems="AlignItems.Center">
+<MudStack Row="true" Spacing="2" Class="mb-4" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap">
+    <MudSelect T="SessionStatus?" Label="Status" Variant="Variant.Outlined" Margin="Margin.Dense"
+               Value="_statusFilter" ValueChanged="OnStatusChanged" Clearable="true" Style="min-width: 160px;">
+        @foreach (var s in Enum.GetValues<SessionStatus>())
+        {
+            <MudSelectItem T="SessionStatus?" Value="@s">@s</MudSelectItem>
+        }
+    </MudSelect>
     <MudDatePicker Label="From" Date="_fromDate" Clearable="true" Variant="Variant.Outlined"
                    Margin="Margin.Dense" DateChanged="OnFromDateChanged" />
     <MudDatePicker Label="To" Date="_toDate" Clearable="true" Variant="Variant.Outlined"
                    Margin="Margin.Dense" DateChanged="OnToDateChanged" />
+    @if (HasActiveFilters)
+    {
+        <MudButton Variant="Variant.Text" Color="Color.Default" Size="Size.Small"
+                   StartIcon="@Icons.Material.Filled.Clear" OnClick="ClearFilters">
+            Clear filters
+        </MudButton>
+    }
 </MudStack>
+
+@if (HasActiveFilters)
+{
+    <MudStack Row="true" Spacing="1" Class="mb-3" Wrap="Wrap.Wrap">
+        @if (_statusFilter.HasValue)
+        {
+            <MudChip T="string" Color="Color.Primary" Size="Size.Small" OnClose="() => { _statusFilter = null; _ = LoadSessions(); }">
+                Status: @_statusFilter
+            </MudChip>
+        }
+        @if (_fromDate.HasValue)
+        {
+            <MudChip T="string" Color="Color.Primary" Size="Size.Small" OnClose="() => { _fromDate = null; _ = LoadSessions(); }">
+                From: @_fromDate.Value.ToString("d")
+            </MudChip>
+        }
+        @if (_toDate.HasValue)
+        {
+            <MudChip T="string" Color="Color.Primary" Size="Size.Small" OnClose="() => { _toDate = null; _ = LoadSessions(); }">
+                To: @_toDate.Value.ToString("d")
+            </MudChip>
+        }
+    </MudStack>
+}
 
 @if (_loading)
 {
@@ -122,8 +160,11 @@ else
     private bool _loading = true;
     private Guid? _currentMemberId;
 
+    private SessionStatus? _statusFilter;
     private DateTime? _fromDate;
     private DateTime? _toDate;
+
+    private bool HasActiveFilters => _statusFilter.HasValue || _fromDate.HasValue || _toDate.HasValue;
 
     protected override async Task OnInitializedAsync()
     {
@@ -145,7 +186,7 @@ else
             DateTimeOffset? from = _fromDate.HasValue ? new DateTimeOffset(_fromDate.Value, TimeSpan.Zero) : null;
             DateTimeOffset? to = _toDate.HasValue ? new DateTimeOffset(_toDate.Value.AddDays(1), TimeSpan.Zero) : null;
             var result = await SessionApi.GetAllAsync(
-                recurringTrainingId: RecurringTrainingId, from: from, to: to);
+                recurringTrainingId: RecurringTrainingId, status: _statusFilter?.ToString(), from: from, to: to);
             _sessions = result?.Items.ToList();
         }
         catch (AccessTokenNotAvailableException ex)
@@ -162,6 +203,12 @@ else
         }
     }
 
+    private async Task OnStatusChanged(SessionStatus? value)
+    {
+        _statusFilter = value;
+        await LoadSessions();
+    }
+
     private async Task OnFromDateChanged(DateTime? value)
     {
         _fromDate = value;
@@ -171,6 +218,14 @@ else
     private async Task OnToDateChanged(DateTime? value)
     {
         _toDate = value;
+        await LoadSessions();
+    }
+
+    private async Task ClearFilters()
+    {
+        _statusFilter = null;
+        _fromDate = null;
+        _toDate = null;
         await LoadSessions();
     }
 

@@ -1,0 +1,309 @@
+@page "/profile"
+@attribute [Authorize]
+@inject MemberApiClient MemberApi
+@inject ScheduleApiClient ScheduleApi
+@inject ISnackbar Snackbar
+
+<PageTitle>My Profile</PageTitle>
+
+<MudText Typo="Typo.h4" GutterBottom="true">My Profile</MudText>
+
+@if (_loading)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else if (_error is not null)
+{
+    <MudAlert Severity="Severity.Error">@_error</MudAlert>
+}
+else if (_member is null)
+{
+    <MudAlert Severity="Severity.Warning">Could not load your profile.</MudAlert>
+}
+else
+{
+    @* Membership status banner *@
+    <MudAlert Severity="@GetStatusSeverity(_member.Status)" Class="mb-4" Variant="Variant.Outlined">
+        @switch (_member.Status)
+        {
+            case RegistrationStatus.Pending:
+                <text>Your registration is <strong>awaiting approval</strong>. An admin will review your request shortly.</text>
+                break;
+            case RegistrationStatus.Approved:
+                <text>You are an <strong>active member</strong>.</text>
+                break;
+            case RegistrationStatus.Rejected:
+                <text>Your registration was <strong>rejected</strong>. Please contact an admin for details.</text>
+                break;
+            case RegistrationStatus.Suspended:
+                <text>Your membership is <strong>suspended</strong>. Please contact an admin for details.</text>
+                break;
+        }
+    </MudAlert>
+
+    <MudCard Class="mb-4">
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h6">Profile Information</MudText>
+            </CardHeaderContent>
+            <CardHeaderActions>
+                @if (!_editing)
+                {
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" OnClick="StartEditing" />
+                }
+            </CardHeaderActions>
+        </MudCardHeader>
+        <MudCardContent>
+            @if (_editing)
+            {
+                <MudStack Spacing="3">
+                    <MudStack Row="true" Spacing="2">
+                        <MudTextField @bind-Value="_editFirstName" Label="First Name" Variant="Variant.Outlined"
+                                      Required="true" Margin="Margin.Dense" />
+                        <MudTextField @bind-Value="_editLastName" Label="Last Name" Variant="Variant.Outlined"
+                                      Required="true" Margin="Margin.Dense" />
+                    </MudStack>
+                    <MudTextField @bind-Value="_editEmail" Label="Email" Variant="Variant.Outlined"
+                                  Required="true" InputType="InputType.Email" Margin="Margin.Dense" />
+                    <MudTextField @bind-Value="_editPhone" Label="Phone" Variant="Variant.Outlined"
+                                  InputType="InputType.Telephone" Margin="Margin.Dense" />
+                </MudStack>
+            }
+            else
+            {
+                <MudStack Spacing="2">
+                    <MudStack Row="true" Spacing="4">
+                        <div>
+                            <MudText Typo="Typo.caption" Color="Color.Default">Name</MudText>
+                            <MudText Typo="Typo.body1">@_member.FirstName @_member.LastName</MudText>
+                        </div>
+                        <div>
+                            <MudText Typo="Typo.caption" Color="Color.Default">Email</MudText>
+                            <MudText Typo="Typo.body1">@_member.Email</MudText>
+                        </div>
+                        <div>
+                            <MudText Typo="Typo.caption" Color="Color.Default">Phone</MudText>
+                            <MudText Typo="Typo.body1">@(_member.Phone ?? "—")</MudText>
+                        </div>
+                    </MudStack>
+                    <MudStack Row="true" Spacing="4">
+                        <div>
+                            <MudText Typo="Typo.caption" Color="Color.Default">Roles</MudText>
+                            <MudStack Row="true" Spacing="1">
+                                @foreach (var role in _member.Roles)
+                                {
+                                    <MudChip T="string" Color="@GetRoleColor(role)" Size="Size.Small">@role</MudChip>
+                                }
+                            </MudStack>
+                        </div>
+                        <div>
+                            <MudText Typo="Typo.caption" Color="Color.Default">Status</MudText>
+                            <MudChip T="string" Color="@GetStatusChipColor(_member.Status)" Size="Size.Small">
+                                @_member.Status
+                            </MudChip>
+                        </div>
+                        <div>
+                            <MudText Typo="Typo.caption" Color="Color.Default">Member since</MudText>
+                            <MudText Typo="Typo.body1">@_member.RegisteredAt.LocalDateTime.ToString("MMMM d, yyyy")</MudText>
+                        </div>
+                    </MudStack>
+                </MudStack>
+            }
+        </MudCardContent>
+        @if (_editing)
+        {
+            <MudCardActions>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                           OnClick="SaveProfile" Disabled="_saving">
+                    Save
+                </MudButton>
+                <MudButton Variant="Variant.Text" OnClick="CancelEditing" Disabled="_saving">
+                    Cancel
+                </MudButton>
+            </MudCardActions>
+        }
+    </MudCard>
+
+    @* Training History *@
+    <MudText Typo="Typo.h6" GutterBottom="true">Training History</MudText>
+
+    @if (_historyLoading)
+    {
+        <MudProgressCircular Indeterminate="true" Size="Size.Small" />
+    }
+    else if (_history is null || _history.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info">No past training entries found.</MudAlert>
+    }
+    else
+    {
+        <MudTable Items="_history" Hover="true" Striped="true" Dense="true">
+            <HeaderContent>
+                <MudTh>Title</MudTh>
+                <MudTh>Type</MudTh>
+                <MudTh>Date</MudTh>
+                <MudTh>Time</MudTh>
+                <MudTh>Location</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Title">@context.Title</MudTd>
+                <MudTd DataLabel="Type">
+                    <MudChip T="string" Size="Size.Small">@context.Type</MudChip>
+                </MudTd>
+                <MudTd DataLabel="Date">@context.Start.LocalDateTime.ToString("ddd, MMM d, yyyy")</MudTd>
+                <MudTd DataLabel="Time">
+                    @context.Start.LocalDateTime.ToString("HH:mm") — @context.End.LocalDateTime.ToString("HH:mm")
+                </MudTd>
+                <MudTd DataLabel="Location">@(context.LocationName ?? "—")</MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+}
+
+@code {
+    private MemberResponse? _member;
+    private bool _loading = true;
+    private bool _saving;
+    private string? _error;
+
+    private bool _editing;
+    private string _editFirstName = string.Empty;
+    private string _editLastName = string.Empty;
+    private string _editEmail = string.Empty;
+    private string? _editPhone;
+
+    private List<ScheduleEntryResponse>? _history;
+    private bool _historyLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProfile();
+        await LoadHistory();
+    }
+
+    private async Task LoadProfile()
+    {
+        _loading = true;
+        _error = null;
+
+        try
+        {
+            _member = await MemberApi.GetCurrentMemberAsync();
+        }
+        catch (AccessTokenNotAvailableException ex)
+        {
+            ex.Redirect();
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to load profile: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task LoadHistory()
+    {
+        _historyLoading = true;
+        try
+        {
+            var to = DateTimeOffset.UtcNow;
+            var from = to.AddMonths(-6);
+            var entries = await ScheduleApi.GetMyScheduleAsync(from, to);
+            _history = entries?
+                .Where(e => e.Start < DateTimeOffset.UtcNow)
+                .OrderByDescending(e => e.Start)
+                .ToList();
+        }
+        catch
+        {
+            // Non-fatal — history is optional
+        }
+        finally
+        {
+            _historyLoading = false;
+        }
+    }
+
+    private void StartEditing()
+    {
+        if (_member is null) return;
+        _editFirstName = _member.FirstName;
+        _editLastName = _member.LastName;
+        _editEmail = _member.Email;
+        _editPhone = _member.Phone;
+        _editing = true;
+    }
+
+    private void CancelEditing()
+    {
+        _editing = false;
+    }
+
+    private async Task SaveProfile()
+    {
+        if (string.IsNullOrWhiteSpace(_editFirstName) || string.IsNullOrWhiteSpace(_editLastName)
+            || string.IsNullOrWhiteSpace(_editEmail))
+        {
+            Snackbar.Add("First name, last name, and email are required.", Severity.Warning);
+            return;
+        }
+
+        _saving = true;
+        try
+        {
+            var request = new UpdateProfileRequest(_editFirstName.Trim(), _editLastName.Trim(),
+                _editEmail.Trim(), _editPhone?.Trim());
+            var response = await MemberApi.UpdateProfileAsync(request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Profile updated.", Severity.Success);
+                _editing = false;
+                await LoadProfile();
+            }
+            else
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Failed to update: {body}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private static Severity GetStatusSeverity(RegistrationStatus status) => status switch
+    {
+        RegistrationStatus.Pending => Severity.Warning,
+        RegistrationStatus.Approved => Severity.Success,
+        RegistrationStatus.Rejected => Severity.Error,
+        RegistrationStatus.Suspended => Severity.Error,
+        _ => Severity.Info
+    };
+
+    private static Color GetStatusChipColor(RegistrationStatus status) => status switch
+    {
+        RegistrationStatus.Pending => Color.Warning,
+        RegistrationStatus.Approved => Color.Success,
+        RegistrationStatus.Rejected => Color.Error,
+        RegistrationStatus.Suspended => Color.Error,
+        _ => Color.Default
+    };
+
+    private static Color GetRoleColor(MemberRole role) => role switch
+    {
+        MemberRole.Admin => Color.Error,
+        MemberRole.Trainer => Color.Info,
+        MemberRole.Member => Color.Success,
+        MemberRole.Guest => Color.Default,
+        _ => Color.Default
+    };
+}

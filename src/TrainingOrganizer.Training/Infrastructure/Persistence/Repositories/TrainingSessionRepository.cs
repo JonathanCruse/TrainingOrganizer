@@ -44,7 +44,7 @@ public sealed class TrainingSessionRepository : ITrainingSessionRepository
 
     public async Task<PagedList<TrainingSession>> GetPagedAsync(
         int page, int pageSize, RecurringTrainingId? recurringTrainingId,
-        DateTimeOffset? from, DateTimeOffset? to, CancellationToken ct = default)
+        SessionStatus? statusFilter, DateTimeOffset? from, DateTimeOffset? to, CancellationToken ct = default)
     {
         var filterBuilder = Builders<TrainingSessionDocument>.Filter;
         var filter = filterBuilder.Empty;
@@ -52,6 +52,11 @@ public sealed class TrainingSessionRepository : ITrainingSessionRepository
         if (recurringTrainingId is not null)
         {
             filter &= filterBuilder.Eq(d => d.RecurringTrainingId, recurringTrainingId.Value);
+        }
+
+        if (statusFilter.HasValue)
+        {
+            filter &= filterBuilder.Eq(d => d.Status, statusFilter.Value.ToString());
         }
 
         if (from.HasValue)

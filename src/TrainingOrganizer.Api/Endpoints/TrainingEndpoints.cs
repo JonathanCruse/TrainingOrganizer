@@ -44,13 +44,13 @@ public static class TrainingEndpoints
     }
 
     private static async Task<IResult> ListTrainings(
-        int page, int pageSize, string? status, DateTimeOffset? from, DateTimeOffset? to, ISender sender)
+        int page, int pageSize, string? status, string? search, DateTimeOffset? from, DateTimeOffset? to, ISender sender)
     {
         TrainingStatus? statusFilter = null;
         if (status is not null && Enum.TryParse<TrainingStatus>(status, ignoreCase: true, out var parsed))
             statusFilter = parsed;
 
-        var query = new ListTrainingsQuery(page, pageSize, statusFilter, from, to);
+        var query = new ListTrainingsQuery(page, pageSize, statusFilter, search, from, to);
         var result = await sender.Send(query);
         return result.ToApiResult();
     }

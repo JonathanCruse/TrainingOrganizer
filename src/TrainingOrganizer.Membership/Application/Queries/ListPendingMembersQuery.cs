@@ -23,7 +23,7 @@ public sealed class ListPendingMembersQueryHandler : IRequestHandler<ListPending
     public async Task<Result<PagedList<MemberDto>>> Handle(ListPendingMembersQuery request, CancellationToken cancellationToken)
     {
         var pagedMembers = await _memberRepository.GetPagedAsync(
-            request.Page, request.PageSize, RegistrationStatus.Pending, null, cancellationToken);
+            request.Page, request.PageSize, RegistrationStatus.Pending, null, null, cancellationToken);
 
         var dtos = pagedMembers.Items.Select(MemberDto.FromDomain).ToList();
 

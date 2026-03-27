@@ -28,7 +28,7 @@ public sealed class TrainingRepository : ITrainingRepository
     }
 
     public async Task<PagedList<Domain.Training>> GetPagedAsync(
-        int page, int pageSize, TrainingStatus? statusFilter, DateTimeOffset? from, DateTimeOffset? to, CancellationToken ct = default)
+        int page, int pageSize, TrainingStatus? statusFilter, string? searchTerm, DateTimeOffset? from, DateTimeOffset? to, CancellationToken ct = default)
     {
         var filterBuilder = Builders<TrainingDocument>.Filter;
         var filter = filterBuilder.Empty;
@@ -36,6 +36,14 @@ public sealed class TrainingRepository : ITrainingRepository
         if (statusFilter.HasValue)
         {
             filter &= filterBuilder.Eq(d => d.Status, statusFilter.Value.ToString());
+        }
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            var searchFilter = filterBuilder.Or(
+                filterBuilder.Regex(d => d.Title, new MongoDB.Bson.BsonRegularExpression(searchTerm, "i")),
+                filterBuilder.Regex(d => d.Description, new MongoDB.Bson.BsonRegularExpression(searchTerm, "i")));
+            filter &= searchFilter;
         }
 
         if (from.HasValue)

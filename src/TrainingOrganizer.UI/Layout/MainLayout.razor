@@ -12,10 +12,23 @@
         <MudText Typo="Typo.h5" Class="ml-3">TrainingOrganizer</MudText>
         <MudSpacer />
         <AuthorizeView>
-            <Authorized>
-                <MudText Class="mr-3">@context.User.Identity?.Name</MudText>
-                <MudIconButton Icon="@Icons.Material.Filled.Logout" Color="Color.Inherit"
-                               OnClick="@BeginLogout" />
+            <Authorized Context="auth">
+                <MudMenu Icon="@Icons.Material.Filled.AccountCircle" Color="Color.Inherit"
+                         AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+                    <ActivatorContent>
+                        <MudButton Color="Color.Inherit" EndIcon="@Icons.Material.Filled.ArrowDropDown">
+                            @auth.User.Identity?.Name
+                        </MudButton>
+                    </ActivatorContent>
+                    <ChildContent>
+                        <MudMenuItem Icon="@Icons.Material.Filled.Person" Href="/profile">
+                            Profile
+                        </MudMenuItem>
+                        <MudMenuItem Icon="@Icons.Material.Filled.Logout" OnClick="@BeginLogout">
+                            Logout
+                        </MudMenuItem>
+                    </ChildContent>
+                </MudMenu>
             </Authorized>
             <NotAuthorized>
                 <MudButton Color="Color.Inherit" Href="authentication/login">Login</MudButton>

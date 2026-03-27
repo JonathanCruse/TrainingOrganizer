@@ -3,6 +3,7 @@ using MediatR;
 using TrainingOrganizer.SharedKernel.Application.Models;
 using TrainingOrganizer.Training.Application.DTOs;
 using TrainingOrganizer.Training.Application.Repositories;
+using TrainingOrganizer.Training.Domain.Enums;
 using TrainingOrganizer.Training.Domain.ValueObjects;
 
 namespace TrainingOrganizer.Training.Application.Queries;
@@ -11,6 +12,7 @@ public sealed record ListSessionsQuery(
     int Page,
     int PageSize,
     Guid? RecurringTrainingId,
+    SessionStatus? Status,
     DateTimeOffset? From,
     DateTimeOffset? To) : IRequest<Result<PagedList<TrainingSessionDto>>>;
 
@@ -30,7 +32,7 @@ public sealed class ListSessionsQueryHandler : IRequestHandler<ListSessionsQuery
             : null;
 
         var paged = await _sessionRepository.GetPagedAsync(
-            request.Page, request.PageSize, recurringTrainingId, request.From, request.To, cancellationToken);
+            request.Page, request.PageSize, recurringTrainingId, request.Status, request.From, request.To, cancellationToken);
 
         var dtos = paged.Items.Select(TrainingSessionDto.FromDomain).ToList();
 

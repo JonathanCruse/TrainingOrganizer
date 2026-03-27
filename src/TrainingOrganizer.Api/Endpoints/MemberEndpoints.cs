@@ -52,13 +52,17 @@ public static class MemberEndpoints
     }
 
     private static async Task<IResult> ListMembers(
-        int page, int pageSize, string? status, string? search, ISender sender)
+        int page, int pageSize, string? status, string? search, string? role, ISender sender)
     {
         RegistrationStatus? statusFilter = null;
         if (status is not null && Enum.TryParse<RegistrationStatus>(status, ignoreCase: true, out var parsed))
             statusFilter = parsed;
 
-        var query = new ListMembersQuery(page, pageSize, statusFilter, search);
+        MemberRole? roleFilter = null;
+        if (role is not null && Enum.TryParse<MemberRole>(role, ignoreCase: true, out var parsedRole))
+            roleFilter = parsedRole;
+
+        var query = new ListMembersQuery(page, pageSize, statusFilter, search, roleFilter);
         var result = await sender.Send(query);
         return result.ToApiResult();
     }

@@ -28,9 +28,13 @@ public static class SessionEndpoints
     }
 
     private static async Task<IResult> ListSessions(
-        int page, int pageSize, Guid? recurringTrainingId, DateTimeOffset? from, DateTimeOffset? to, ISender sender)
+        int page, int pageSize, Guid? recurringTrainingId, string? status, DateTimeOffset? from, DateTimeOffset? to, ISender sender)
     {
-        var query = new ListSessionsQuery(page, pageSize, recurringTrainingId, from, to);
+        SessionStatus? statusFilter = null;
+        if (status is not null && Enum.TryParse<SessionStatus>(status, ignoreCase: true, out var parsed))
+            statusFilter = parsed;
+
+        var query = new ListSessionsQuery(page, pageSize, recurringTrainingId, statusFilter, from, to);
         var result = await sender.Send(query);
         return result.ToApiResult();
     }

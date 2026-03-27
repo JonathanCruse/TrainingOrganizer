@@ -2,6 +2,7 @@
 @inject TrainingApiClient TrainingApi
 @inject IDialogService DialogService
 @inject NavigationManager Nav
+@inject ISnackbar Snackbar
 
 <PageTitle>Trainings</PageTitle>
 
@@ -15,6 +16,74 @@
     </AuthorizeView>
 </MudStack>
 
+<MudStack Row="true" Spacing="2" Class="mb-4" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap">
+    <MudTextField @bind-Value="_search" Label="Search" Variant="Variant.Outlined" Margin="Margin.Dense"
+                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                  Clearable="true" Immediate="false" DebounceInterval="400"
+                  TextChanged="OnSearchChanged" Style="min-width: 220px;" />
+    <MudSelect T="TrainingStatus?" Label="Status" Variant="Variant.Outlined" Margin="Margin.Dense"
+               Value="_statusFilter" ValueChanged="OnStatusChanged" Clearable="true" Style="min-width: 160px;">
+        @foreach (var s in Enum.GetValues<TrainingStatus>())
+        {
+            <MudSelectItem T="TrainingStatus?" Value="@s">@s</MudSelectItem>
+        }
+    </MudSelect>
+    <MudDatePicker Label="From" Date="_fromDate" Clearable="true" Variant="Variant.Outlined"
+                   Margin="Margin.Dense" DateChanged="OnFromDateChanged" />
+    <MudDatePicker Label="To" Date="_toDate" Clearable="true" Variant="Variant.Outlined"
+                   Margin="Margin.Dense" DateChanged="OnToDateChanged" />
+    <MudToggleIconButton Toggled="_availableOnly"
+                         Icon="@Icons.Material.Filled.FilterAlt"
+                         ToggledIcon="@Icons.Material.Filled.FilterAlt"
+                         Color="Color.Default" ToggledColor="Color.Primary"
+                         Size="Size.Medium" ToggledSize="Size.Medium"
+                         title="Show available only"
+                         ToggledChanged="OnAvailableToggled" />
+    @if (HasActiveFilters)
+    {
+        <MudButton Variant="Variant.Text" Color="Color.Default" Size="Size.Small"
+                   StartIcon="@Icons.Material.Filled.Clear" OnClick="ClearFilters">
+            Clear filters
+        </MudButton>
+    }
+</MudStack>
+
+@if (HasActiveFilters)
+{
+    <MudStack Row="true" Spacing="1" Class="mb-3" Wrap="Wrap.Wrap">
+        @if (!string.IsNullOrWhiteSpace(_search))
+        {
+            <MudChip T="string" Color="Color.Primary" Size="Size.Small" OnClose="() => { _search = null; _ = LoadTrainings(); }">
+                Search: @_search
+            </MudChip>
+        }
+        @if (_statusFilter.HasValue)
+        {
+            <MudChip T="string" Color="Color.Primary" Size="Size.Small" OnClose="() => { _statusFilter = null; _ = LoadTrainings(); }">
+                Status: @_statusFilter
+            </MudChip>
+        }
+        @if (_fromDate.HasValue)
+        {
+            <MudChip T="string" Color="Color.Primary" Size="Size.Small" OnClose="() => { _fromDate = null; _ = LoadTrainings(); }">
+                From: @_fromDate.Value.ToString("d")
+            </MudChip>
+        }
+        @if (_toDate.HasValue)
+        {
+            <MudChip T="string" Color="Color.Primary" Size="Size.Small" OnClose="() => { _toDate = null; _ = LoadTrainings(); }">
+                To: @_toDate.Value.ToString("d")
+            </MudChip>
+        }
+        @if (_availableOnly)
+        {
+            <MudChip T="string" Color="Color.Primary" Size="Size.Small" OnClose="() => { _availableOnly = false; _ = LoadTrainings(); }">
+                Available only
+            </MudChip>
+        }
+    </MudStack>
+}
+
 @if (_loading)
 {
     <MudProgressCircular Indeterminate="true" />
@@ -23,14 +92,14 @@ else if (_error is not null)
 {
     <MudAlert Severity="Severity.Error">@_error</MudAlert>
 }
-else if (_trainings is null || _trainings.Count == 0)
+else if (_displayedTrainings is null || _displayedTrainings.Count == 0)
 {
     <MudAlert Severity="Severity.Info">No trainings found.</MudAlert>
 }
 else
 {
     <MudGrid>
-        @foreach (var training in _trainings)
+        @foreach (var training in _displayedTrainings)
         {
             var pendingCount = training.Participants.Count(p => p.Status == ParticipationStatus.PendingApproval);
             var myParticipation = _currentMemberId.HasValue
@@ -114,9 +183,19 @@ else
     [CascadingParameter] private Task<AuthenticationState> AuthState { get; set; } = default!;
 
     private List<TrainingResponse>? _trainings;
+    private List<TrainingResponse>? _displayedTrainings;
     private string? _error;
     private bool _loading = true;
     private Guid? _currentMemberId;
+
+    private string? _search;
+    private TrainingStatus? _statusFilter;
+    private DateTime? _fromDate;
+    private DateTime? _toDate;
+    private bool _availableOnly;
+
+    private bool HasActiveFilters => !string.IsNullOrWhiteSpace(_search) || _statusFilter.HasValue
+        || _fromDate.HasValue || _toDate.HasValue || _availableOnly;
 
     protected override async Task OnInitializedAsync()
     {
@@ -135,8 +214,13 @@ else
 
         try
         {
-            var result = await TrainingApi.GetAllAsync();
+            DateTimeOffset? from = _fromDate.HasValue ? new DateTimeOffset(_fromDate.Value, TimeSpan.Zero) : null;
+            DateTimeOffset? to = _toDate.HasValue ? new DateTimeOffset(_toDate.Value.AddDays(1), TimeSpan.Zero) : null;
+
+            var result = await TrainingApi.GetAllAsync(
+                status: _statusFilter?.ToString(), search: _search, from: from, to: to);
             _trainings = result?.Items.ToList();
+            ApplyClientFilters();
         }
         catch (AccessTokenNotAvailableException ex)
         {
@@ -152,16 +236,86 @@ else
         }
     }
 
+    private void ApplyClientFilters()
+    {
+        if (_trainings is null)
+        {
+            _displayedTrainings = null;
+            return;
+        }
+
+        var filtered = _trainings.AsEnumerable();
+
+        if (_availableOnly)
+        {
+            filtered = filtered.Where(t =>
+                t.Status == TrainingStatus.Published
+                && t.ConfirmedParticipantCount < t.MaxCapacity);
+        }
+
+        _displayedTrainings = filtered.ToList();
+    }
+
+    private async Task OnSearchChanged(string? value)
+    {
+        _search = value;
+        await LoadTrainings();
+    }
+
+    private async Task OnStatusChanged(TrainingStatus? value)
+    {
+        _statusFilter = value;
+        await LoadTrainings();
+    }
+
+    private async Task OnFromDateChanged(DateTime? value)
+    {
+        _fromDate = value;
+        await LoadTrainings();
+    }
+
+    private async Task OnToDateChanged(DateTime? value)
+    {
+        _toDate = value;
+        await LoadTrainings();
+    }
+
+    private async Task OnAvailableToggled(bool value)
+    {
+        _availableOnly = value;
+        ApplyClientFilters();
+        await Task.CompletedTask;
+    }
+
+    private async Task ClearFilters()
+    {
+        _search = null;
+        _statusFilter = null;
+        _fromDate = null;
+        _toDate = null;
+        _availableOnly = false;
+        await LoadTrainings();
+    }
+
     private async Task JoinTraining(Guid id)
     {
         try
         {
-            await TrainingApi.JoinAsync(id);
-            await LoadTrainings();
+            var response = await TrainingApi.JoinAsync(id);
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Joined training.", Severity.Success);
+                await LoadTrainings();
+            }
+            else
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Failed to join: {body}", Severity.Error);
+            }
         }
         catch (Exception ex)
         {
-            _error = $"Failed to join: {ex.Message}";
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
         }
     }
 

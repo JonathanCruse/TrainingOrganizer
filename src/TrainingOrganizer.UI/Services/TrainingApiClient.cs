@@ -5,8 +5,21 @@ namespace TrainingOrganizer.UI.Services;
 
 public sealed class TrainingApiClient(HttpClient http)
 {
-    public async Task<PagedResponse<TrainingResponse>?> GetAllAsync(int page = 1, int pageSize = 20)
-        => await http.GetFromJsonAsync<PagedResponse<TrainingResponse>>($"api/v1/trainings?page={page}&pageSize={pageSize}");
+    public async Task<PagedResponse<TrainingResponse>?> GetAllAsync(
+        int page = 1, int pageSize = 20, string? status = null, string? search = null,
+        DateTimeOffset? from = null, DateTimeOffset? to = null)
+    {
+        var url = $"api/v1/trainings?page={page}&pageSize={pageSize}";
+        if (status is not null)
+            url += $"&status={Uri.EscapeDataString(status)}";
+        if (!string.IsNullOrWhiteSpace(search))
+            url += $"&search={Uri.EscapeDataString(search)}";
+        if (from.HasValue)
+            url += $"&from={from.Value:O}";
+        if (to.HasValue)
+            url += $"&to={to.Value:O}";
+        return await http.GetFromJsonAsync<PagedResponse<TrainingResponse>>(url);
+    }
 
     public async Task<TrainingResponse?> GetByIdAsync(Guid id)
         => await http.GetFromJsonAsync<TrainingResponse>($"api/v1/trainings/{id}");

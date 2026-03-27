@@ -11,6 +11,7 @@ public sealed record ListTrainingsQuery(
     int Page,
     int PageSize,
     TrainingStatus? Status,
+    string? Search,
     DateTimeOffset? From,
     DateTimeOffset? To) : IRequest<Result<PagedList<TrainingDto>>>;
 
@@ -26,7 +27,7 @@ public sealed class ListTrainingsQueryHandler : IRequestHandler<ListTrainingsQue
     public async Task<Result<PagedList<TrainingDto>>> Handle(ListTrainingsQuery request, CancellationToken cancellationToken)
     {
         var pagedTrainings = await _trainingRepository.GetPagedAsync(
-            request.Page, request.PageSize, request.Status, request.From, request.To, cancellationToken);
+            request.Page, request.PageSize, request.Status, request.Search, request.From, request.To, cancellationToken);
 
         var dtos = pagedTrainings.Items.Select(TrainingDto.FromDomain).ToList();
 

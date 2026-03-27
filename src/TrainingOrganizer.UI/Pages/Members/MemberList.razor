@@ -15,6 +15,58 @@
     </AuthorizeView>
 </MudStack>
 
+<MudStack Row="true" Spacing="2" Class="mb-4" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap">
+    <MudTextField @bind-Value="_search" Label="Search name or email" Variant="Variant.Outlined" Margin="Margin.Dense"
+                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                  Clearable="true" Immediate="false" DebounceInterval="400"
+                  TextChanged="OnSearchChanged" Style="min-width: 240px;" />
+    <MudSelect T="RegistrationStatus?" Label="Status" Variant="Variant.Outlined" Margin="Margin.Dense"
+               Value="_statusFilter" ValueChanged="OnStatusChanged" Clearable="true" Style="min-width: 160px;">
+        @foreach (var s in Enum.GetValues<RegistrationStatus>())
+        {
+            <MudSelectItem T="RegistrationStatus?" Value="@s">@s</MudSelectItem>
+        }
+    </MudSelect>
+    <MudSelect T="MemberRole?" Label="Role" Variant="Variant.Outlined" Margin="Margin.Dense"
+               Value="_roleFilter" ValueChanged="OnRoleChanged" Clearable="true" Style="min-width: 140px;">
+        @foreach (var r in Enum.GetValues<MemberRole>())
+        {
+            <MudSelectItem T="MemberRole?" Value="@r">@r</MudSelectItem>
+        }
+    </MudSelect>
+    @if (HasActiveFilters)
+    {
+        <MudButton Variant="Variant.Text" Color="Color.Default" Size="Size.Small"
+                   StartIcon="@Icons.Material.Filled.Clear" OnClick="ClearFilters">
+            Clear filters
+        </MudButton>
+    }
+</MudStack>
+
+@if (HasActiveFilters)
+{
+    <MudStack Row="true" Spacing="1" Class="mb-3" Wrap="Wrap.Wrap">
+        @if (!string.IsNullOrWhiteSpace(_search))
+        {
+            <MudChip T="string" Color="Color.Primary" Size="Size.Small" OnClose="() => { _search = null; _ = LoadMembers(); }">
+                Search: @_search
+            </MudChip>
+        }
+        @if (_statusFilter.HasValue)
+        {
+            <MudChip T="string" Color="Color.Primary" Size="Size.Small" OnClose="() => { _statusFilter = null; _ = LoadMembers(); }">
+                Status: @_statusFilter
+            </MudChip>
+        }
+        @if (_roleFilter.HasValue)
+        {
+            <MudChip T="string" Color="Color.Primary" Size="Size.Small" OnClose="() => { _roleFilter = null; _ = LoadMembers(); }">
+                Role: @_roleFilter
+            </MudChip>
+        }
+    </MudStack>
+}
+
 @if (_loading)
 {
     <MudProgressCircular Indeterminate="true" />
@@ -87,6 +139,12 @@ else
     private string? _error;
     private bool _loading = true;
 
+    private string? _search;
+    private RegistrationStatus? _statusFilter;
+    private MemberRole? _roleFilter;
+
+    private bool HasActiveFilters => !string.IsNullOrWhiteSpace(_search) || _statusFilter.HasValue || _roleFilter.HasValue;
+
     protected override async Task OnInitializedAsync()
     {
         await LoadMembers();
@@ -99,7 +157,8 @@ else
 
         try
         {
-            var result = await MemberApi.GetAllAsync();
+            var result = await MemberApi.GetAllAsync(
+                status: _statusFilter?.ToString(), search: _search, role: _roleFilter?.ToString());
             _members = result?.Items.ToList();
         }
         catch (AccessTokenNotAvailableException ex)
@@ -114,6 +173,32 @@ else
         {
             _loading = false;
         }
+    }
+
+    private async Task OnSearchChanged(string? value)
+    {
+        _search = value;
+        await LoadMembers();
+    }
+
+    private async Task OnStatusChanged(RegistrationStatus? value)
+    {
+        _statusFilter = value;
+        await LoadMembers();
+    }
+
+    private async Task OnRoleChanged(MemberRole? value)
+    {
+        _roleFilter = value;
+        await LoadMembers();
+    }
+
+    private async Task ClearFilters()
+    {
+        _search = null;
+        _statusFilter = null;
+        _roleFilter = null;
+        await LoadMembers();
     }
 
     private async Task OpenRegisterDialog()

@@ -44,7 +44,7 @@ public sealed class MemberRepository : IMemberRepository
     }
 
     public async Task<PagedList<Member>> GetPagedAsync(
-        int page, int pageSize, RegistrationStatus? statusFilter, string? searchTerm, CancellationToken ct = default)
+        int page, int pageSize, RegistrationStatus? statusFilter, string? searchTerm, MemberRole? roleFilter, CancellationToken ct = default)
     {
         var filterBuilder = Builders<MemberDocument>.Filter;
         var filter = filterBuilder.Empty;
@@ -61,6 +61,11 @@ public sealed class MemberRepository : IMemberRepository
                 filterBuilder.Regex(d => d.LastName, new MongoDB.Bson.BsonRegularExpression(searchTerm, "i")),
                 filterBuilder.Regex(d => d.Email, new MongoDB.Bson.BsonRegularExpression(searchTerm, "i")));
             filter &= searchFilter;
+        }
+
+        if (roleFilter.HasValue)
+        {
+            filter &= filterBuilder.AnyEq(d => d.Roles, roleFilter.Value.ToString());
         }
 
         var totalCount = await Members.CountDocumentsAsync(filter, cancellationToken: ct);

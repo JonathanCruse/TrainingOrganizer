@@ -11,7 +11,8 @@ public sealed record ListMembersQuery(
     int Page,
     int PageSize,
     RegistrationStatus? Status,
-    string? Search) : IRequest<Result<PagedList<MemberDto>>>;
+    string? Search,
+    MemberRole? Role) : IRequest<Result<PagedList<MemberDto>>>;
 
 public sealed class ListMembersQueryHandler : IRequestHandler<ListMembersQuery, Result<PagedList<MemberDto>>>
 {
@@ -25,7 +26,7 @@ public sealed class ListMembersQueryHandler : IRequestHandler<ListMembersQuery, 
     public async Task<Result<PagedList<MemberDto>>> Handle(ListMembersQuery request, CancellationToken cancellationToken)
     {
         var pagedMembers = await _memberRepository.GetPagedAsync(
-            request.Page, request.PageSize, request.Status, request.Search, cancellationToken);
+            request.Page, request.PageSize, request.Status, request.Search, request.Role, cancellationToken);
 
         var dtos = pagedMembers.Items.Select(MemberDto.FromDomain).ToList();
 
